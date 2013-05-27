@@ -19,8 +19,8 @@ int tick(struct em8051 *aCPU)
         aCPU->mTickDelay--;
         return 0;
     }
-    //aCPU->mTickDelay = aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemSize - 1)]](aCPU);
-    aCPU->mTickDelay = do_op(aCPU);
+    aCPU->mTickDelay = aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemSize - 1)]](aCPU);
+    //aCPU->mTickDelay = do_op(aCPU);
     // update parity bit
     v = aCPU->mSFR[REG_ACC];
     v ^= v >> 4;
