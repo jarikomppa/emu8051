@@ -23,8 +23,8 @@ static void timer_tick(struct em8051 *aCPU)
         increment = 0;
         
         // Check if we're run enabled
-        // TODO: also run if GATE is not one and INT is true (external interrupt)
-        if ((aCPU->mSFR[REG_TMOD] & TMODMASK_GATE_0) && 
+        // TODO: also run if GATE is one and INT is one (external interrupt)
+        if (!(aCPU->mSFR[REG_TMOD] & TMODMASK_GATE_0) && 
             (aCPU->mSFR[REG_TCON] & TCONMASK_TR0))
         {
             // check timer / counter mode
@@ -102,7 +102,7 @@ static void timer_tick(struct em8051 *aCPU)
         
         increment = 0;
 
-        if ((aCPU->mSFR[REG_TMOD] & TMODMASK_GATE_1) && 
+        if (!(aCPU->mSFR[REG_TMOD] & TMODMASK_GATE_1) && 
             (aCPU->mSFR[REG_TCON] & TCONMASK_TR1))
         {
             if (aCPU->mSFR[REG_TMOD] & TMODMASK_CT_1)

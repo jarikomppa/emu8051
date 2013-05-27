@@ -18,6 +18,20 @@ static int logicmode = 0;
 static int portmode = 0;
 static int oldports[4];
 static unsigned char shiftregisters[4*4];
+static int audiotick = 0;
+static FILE *audioout = NULL;
+
+static void closeaudio(void)
+{
+    int len = ftell(audioout);
+    fseek(audioout, 4, SEEK_SET);
+    len -= 8;
+    fwrite(&len,1,4,audioout);
+    fseek(audioout, 40, SEEK_SET);
+    len -= 32;
+    fwrite(&len,1,4,audioout);
+    fclose(audioout);
+}
 
 void logicboard_tick(struct em8051 *aCPU)
 {
@@ -52,6 +66,98 @@ void logicboard_tick(struct em8051 *aCPU)
         oldports[1] = aCPU->mSFR[REG_P1];
         oldports[2] = aCPU->mSFR[REG_P2];
         oldports[3] = aCPU->mSFR[REG_P3];
+    }
+
+    if (logicmode == 3)
+    {
+        if (audioout == NULL)
+        {
+            audioout = fopen("audioout.wav", "wb");
+            // RIFF signature
+            fputc('R', audioout);
+            fputc('I', audioout);
+            fputc('F', audioout);
+            fputc('F', audioout);
+
+            // file length - 8 bytes
+            fputc(0, audioout);
+            fputc(0, audioout);
+            fputc(0, audioout);
+            fputc(0, audioout);
+
+            // file type
+            fputc('W', audioout);
+            fputc('A', audioout);
+            fputc('V', audioout);
+            fputc('E', audioout);
+
+            // format chunk
+            fputc('f', audioout);
+            fputc('m', audioout);
+            fputc('t', audioout);
+            fputc(' ', audioout);
+
+            // format size
+            fputc(16, audioout);
+            fputc(0, audioout);
+            fputc(0, audioout);
+            fputc(0, audioout);
+
+            // PCM
+            fputc(1, audioout);
+            fputc(0, audioout);
+
+            // mono
+            fputc(1, audioout);
+            fputc(0, audioout);
+
+            // 44khz
+            fputc(0x44, audioout);
+            fputc(0xAC, audioout);
+            fputc(0, audioout);
+            fputc(0, audioout);
+
+            // bytes / sec
+            fputc(0x44, audioout);
+            fputc(0xAC, audioout);
+            fputc(0, audioout);
+            fputc(0, audioout);
+
+            // block align
+            fputc(1, audioout);
+            fputc(0, audioout);
+
+            // bits per sample
+            fputc(8, audioout);
+            fputc(0, audioout);
+/*
+            // extra format bytes
+            fputc(0, audioout);
+            fputc(0, audioout);
+*/
+            // data chunk
+            fputc('d', audioout);
+            fputc('a', audioout);
+            fputc('t', audioout);
+            fputc('a', audioout);
+
+            // chunk size
+            fputc(0, audioout);
+            fputc(0, audioout);
+            fputc(0, audioout);
+            fputc(0, audioout);
+
+            // ..and we're ready to write data finally.
+            audiotick = 0;
+
+            atexit(closeaudio);
+        }
+        audiotick++;
+        if (audiotick > opt_clock_hz / (44100 * 12))
+        {
+            fputc(aCPU->mSFR[REG_P3] & 0x80, audioout);
+            audiotick = 0;
+        }
     }
 }
 
@@ -130,13 +236,8 @@ void logicboard_editor_keys(struct em8051 *aCPU, int ch)
         {
             logicboard_leavemode();
             logicmode++;
-            if (logicmode > 2) logicmode = 2;
+            if (logicmode > 3) logicmode = 3;
             logicboard_entermode();
-        }
-        if (position == 5)
-        {
-            portmode++;
-            if (portmode > 5) portmode = 5;
         }
         break;
     case KEY_LEFT:
@@ -147,15 +248,10 @@ void logicboard_editor_keys(struct em8051 *aCPU, int ch)
             if (logicmode < 0) logicmode = 0;
             logicboard_entermode();
         }
-        if (position == 5)
-        {
-            portmode--;
-            if (portmode < 0) portmode = 0;
-        }
         break;
     case KEY_DOWN:
         position++;
-        if (position > 5) position = 5;
+        if (position > 4) position = 4;
         break;
     case KEY_UP:
         position--;
@@ -303,50 +399,23 @@ void logicboard_update(struct em8051 *aCPU)
         swstate[(data>>0)&1]);
 
     mvprintw(17, 2, "  ");
-    mvprintw(20, 2, "  ");
 
     attron(A_REVERSE);
     switch (logicmode)
     {
     case 0:
         mvprintw(17, 4, "< No additional hw     >");
-        mvprintw(20, 4, "< n/a    >");
         break;
     case 1:
         mvprintw(17, 4, "< 7-seg displays       >");
-        mvprintw(20, 4, "< n/a    >");
         break;
     case 2:
         mvprintw(17, 4, "< 8bit shift registers >");
-        mvprintw(20, 4, "< n/a    >");
+        break;
+    case 3:
+        mvprintw(17, 4, "< 1bit audio out (P3.7)>");
         break;
     }
-/*
-    if (logicmode != 0)
-    {
-        switch (portmode)
-        {
-        case 0:
-            mvprintw(20, 4, "< P0, P1 >");
-            break;
-        case 1:
-            mvprintw(20, 4, "< P0, P2 >");
-            break;
-        case 2:
-            mvprintw(20, 4, "< P0, P3 >");
-            break;
-        case 3:
-            mvprintw(20, 4, "< P1, P2 >");
-            break;
-        case 4:
-            mvprintw(20, 4, "< P1, P3 >");
-            break;
-        case 5:
-            mvprintw(20, 4, "< P2, P3 >");
-            break;
-        }
-    }
-*/
     attroff(A_REVERSE);
 
     mvprintw(position*3+5,2,"->");

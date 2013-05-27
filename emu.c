@@ -101,13 +101,19 @@ void setSpeed(int speed, int runmode)
         break;
     }
 
-    slk_refresh();        
     if (runmode == 0)
     {
+        slk_set(4, "r)un", 0);
+        slk_refresh();        
         nocbreak();
         cbreak();
         nodelay(stdscr, FALSE);        
         return;
+    }
+    else
+    {
+        slk_set(4, "r)unning", 0);
+        slk_refresh();        
     }
 
     if (speed < 4)
@@ -285,6 +291,18 @@ int main(int parc, char ** pars)
         }
         switch (ch)
         {
+        case KEY_F(1):
+            change_view(&emu, 0);
+            break;
+        case KEY_F(2):
+            change_view(&emu, 1);
+            break;
+        case KEY_F(3):
+            change_view(&emu, 2);
+            break;
+        case KEY_F(4):
+            change_view(&emu, 3);
+            break;
         case 'v':
             change_view(&emu, (view + 1) % 4);
             break;
@@ -318,9 +336,7 @@ int main(int parc, char ** pars)
             if (runmode)
             {
                 runmode = 0;
-                nocbreak();
-                cbreak();
-                nodelay(stdscr, FALSE);
+                setSpeed(speed, runmode);
             }
             else
             {
@@ -346,36 +362,19 @@ int main(int parc, char ** pars)
                 speed = 7;
             setSpeed(speed, runmode);
             break;
-        case KEY_NEXT:
-        case '\t':
-        case KEY_NPAGE:
-        case KEY_PPAGE:
-        case KEY_LEFT:
-        case KEY_RIGHT:
-        case KEY_DOWN:
-        case KEY_UP:
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-        case '5':
-        case '6':
-        case '7':
-        case '8':
-        case '9':
-        case '0':
-        case 'a':
-        case 'A':
-        case 'b':
-        case 'B':
-        case 'c':
-        case 'C':
-        case 'd':
-        case 'D':
-        case 'e':
-        case 'E':
-        case 'f':
-        case 'F':
+        case KEY_HOME:
+            if (emu_reset(&emu))
+            {
+                clocks = 0;
+                ticked = 1;
+            }
+            break;
+        case KEY_END:
+            clocks = 0;
+            ticked = 1;
+            break;
+        default:
+            // by default, send keys to the current view
             switch (view)
             {
             case MAIN_VIEW:
@@ -392,18 +391,6 @@ int main(int parc, char ** pars)
                 break;
             }
             break;
-        case KEY_HOME:
-            if (emu_reset(&emu))
-            {
-                clocks = 0;
-                ticked = 1;
-            }
-            break;
-        case KEY_END:
-            {
-                clocks = 0;
-                ticked = 1;
-            }
         }
 
         if (ch == 32 || runmode)
@@ -416,12 +403,12 @@ int main(int parc, char ** pars)
             if (speed == 2 && runmode)
             {
                 targettime += 1;
-                targetclocks += (opt_clock_hz / 1000) - 1;
+                targetclocks += (opt_clock_hz / 12000) - 1;
             }
             if (speed < 2 && runmode)
             {
                 targettime += 10;
-                targetclocks += (opt_clock_hz / 100) - 1;
+                targetclocks += (opt_clock_hz / 1200) - 1;
             }
 
             do
