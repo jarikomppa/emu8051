@@ -133,6 +133,9 @@
 				RelativePath=".\disasm.c">
 			</File>
 			<File
+				RelativePath=".\emu.c">
+			</File>
+			<File
 				RelativePath=".\emu8051.h">
 			</File>
 			<File

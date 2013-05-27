@@ -106,7 +106,7 @@ void mem_memonic(int aValue, char *aBuffer)
     }
     if (!done)
     {
-        sprintf(aBuffer, "%03Xh", aValue);
+        sprintf(aBuffer, "%02Xh", aValue);
     }
 }
 
@@ -179,13 +179,13 @@ void bitaddr_memonic(int aValue, char *aBuffer)
             strcpy(regname, "PCON");
             break;
         default:
-            sprintf(regname, "%03Xh",(aValue & 0xF8));
+            sprintf(regname, "%02Xh",(aValue & 0xF8));
             break;
         }
     }
     else
     {
-        sprintf(regname, "%03Xh", aValue >> 3);
+        sprintf(regname, "%02Xh", aValue >> 3);
     }
 
     sprintf(aBuffer, "%s.%d", regname, aValue & 7);
@@ -194,7 +194,7 @@ void bitaddr_memonic(int aValue, char *aBuffer)
 
 static int disasm_ajmp_offset(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"AJMP  #%05Xh",
+    sprintf(aBuffer,"AJMP  #%04Xh",
         (aPosition + 2) & 0xf800 |
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)] | 
         ((aCPU->mCodeMem[(aPosition)&(aCPU->mCodeMemSize-1)] & 0xe0) << 3));
@@ -203,7 +203,7 @@ static int disasm_ajmp_offset(struct em8051 *aCPU, int aPosition, char *aBuffer)
 
 static int disasm_ljmp_address(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"LJMP  #%05Xh",        
+    sprintf(aBuffer,"LJMP  #%04Xh",        
         (aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)] << 8) | 
         aCPU->mCodeMem[(aPosition + 2)&(aCPU->mCodeMemSize-1)]);
     return 3;
@@ -249,7 +249,7 @@ static int disasm_jbc_bitaddr_offset(struct em8051 *aCPU, int aPosition, char *a
 
 static int disasm_acall_offset(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"ACALL %05Xh",
+    sprintf(aBuffer,"ACALL %04Xh",
         (aPosition + 2) & 0xf800 |
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)] | 
         ((aCPU->mCodeMem[(aPosition)&(aCPU->mCodeMemSize-1)] & 0xe0) << 3));
@@ -258,7 +258,7 @@ static int disasm_acall_offset(struct em8051 *aCPU, int aPosition, char *aBuffer
 
 static int disasm_lcall_address(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"LCALL #%05Xh",        
+    sprintf(aBuffer,"LCALL #%04Xh",        
         (aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)] << 8) | 
         aCPU->mCodeMem[(aPosition + 2)&(aCPU->mCodeMemSize-1)]);
     return 3;
@@ -317,7 +317,7 @@ static int disasm_rl_a(struct em8051 *aCPU, int aPosition, char *aBuffer)
 
 static int disasm_add_a_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"ADD   A, #%03Xh",        
+    sprintf(aBuffer,"ADD   A, #%02Xh",        
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)]);
     return 2;
 }
@@ -362,7 +362,7 @@ static int disasm_rlc_a(struct em8051 *aCPU, int aPosition, char *aBuffer)
 
 static int disasm_addc_a_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"ADD   AC, #%03Xh",        
+    sprintf(aBuffer,"ADDC  A, #%02Xh",        
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)]);
     return 2;
 }
@@ -403,7 +403,7 @@ static int disasm_orl_mem_a(struct em8051 *aCPU, int aPosition, char *aBuffer)
 static int disasm_orl_mem_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
     char mem[16];mem_memonic(aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)], mem);
-    sprintf(aBuffer,"ORL   %s, #%03Xh",        
+    sprintf(aBuffer,"ORL   %s, #%02Xh",        
         mem,
         aCPU->mCodeMem[(aPosition + 2)&(aCPU->mCodeMemSize-1)]);
     
@@ -412,7 +412,7 @@ static int disasm_orl_mem_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 
 static int disasm_orl_a_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"ORL   A, #%03Xh",        
+    sprintf(aBuffer,"ORL   A, #%02Xh",        
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)]);
     return 2;
 }
@@ -453,7 +453,7 @@ static int disasm_anl_mem_a(struct em8051 *aCPU, int aPosition, char *aBuffer)
 static int disasm_anl_mem_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
     char mem[16];mem_memonic(aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)], mem);
-    sprintf(aBuffer,"ANL   %s, #%03Xh",        
+    sprintf(aBuffer,"ANL   %s, #%02Xh",        
         mem,
         aCPU->mCodeMem[(aPosition + 2)&(aCPU->mCodeMemSize-1)]);
     
@@ -462,7 +462,7 @@ static int disasm_anl_mem_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 
 static int disasm_anl_a_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"ANL   A, #%03Xh",
+    sprintf(aBuffer,"ANL   A, #%02Xh",
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)]);
     return 2;
 }
@@ -503,7 +503,7 @@ static int disasm_xrl_mem_a(struct em8051 *aCPU, int aPosition, char *aBuffer)
 static int disasm_xrl_mem_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
     char mem[16];mem_memonic(aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)], mem);
-    sprintf(aBuffer,"XRL   %s, #%03Xh",        
+    sprintf(aBuffer,"XRL   %s, #%02Xh",        
         mem,
         aCPU->mCodeMem[(aPosition + 2)&(aCPU->mCodeMemSize-1)]);
     
@@ -512,7 +512,7 @@ static int disasm_xrl_mem_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 
 static int disasm_xrl_a_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"XRL   A, #%03Xh",
+    sprintf(aBuffer,"XRL   A, #%02Xh",
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)]);
     return 2;
 }
@@ -528,7 +528,7 @@ static int disasm_xrl_a_mem(struct em8051 *aCPU, int aPosition, char *aBuffer)
 
 static int disasm_xrl_a_indir_rx(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"XRL A, @R%d",        
+    sprintf(aBuffer,"XRL   A, @R%d",        
         aCPU->mCodeMem[(aPosition)&(aCPU->mCodeMemSize-1)]&1);
     return 1;
 }
@@ -558,7 +558,7 @@ static int disasm_jmp_indir_a_dptr(struct em8051 *aCPU, int aPosition, char *aBu
 
 static int disasm_mov_a_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"MOV   A, #%03Xh",
+    sprintf(aBuffer,"MOV   A, #%02Xh",
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)]);
     return 2;
 }
@@ -566,7 +566,7 @@ static int disasm_mov_a_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 static int disasm_mov_mem_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
     char mem[16];mem_memonic(aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)], mem);
-    sprintf(aBuffer,"MOV   %s, #%03Xh",        
+    sprintf(aBuffer,"MOV   %s, #%02Xh",        
         mem,
         aCPU->mCodeMem[(aPosition + 2)&(aCPU->mCodeMemSize-1)]);
     
@@ -575,7 +575,7 @@ static int disasm_mov_mem_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 
 static int disasm_mov_indir_rx_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"MOV   @R%d, #%03Xh",        
+    sprintf(aBuffer,"MOV   @R%d, #%02Xh",        
         aCPU->mCodeMem[(aPosition)&(aCPU->mCodeMemSize-1)]&1,
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)]);
     return 2;
@@ -658,7 +658,7 @@ static int disasm_movc_a_indir_a_dptr(struct em8051 *aCPU, int aPosition, char *
 
 static int disasm_subb_a_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"SUBB  A, #%03Xh",
+    sprintf(aBuffer,"SUBB  A, #%02Xh",
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)]);
     return 2;
 }
@@ -747,7 +747,7 @@ static int disasm_cpl_c(struct em8051 *aCPU, int aPosition, char *aBuffer)
 
 static int disasm_cjne_a_imm_offset(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"CJNE  A, #%03Xh, #%+d",
+    sprintf(aBuffer,"CJNE  A, #%02Xh, #%+d",
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)],
         (signed char)(aCPU->mCodeMem[(aPosition + 2)&(aCPU->mCodeMemSize-1)]));
     return 3;
@@ -764,7 +764,7 @@ static int disasm_cjne_a_mem_offset(struct em8051 *aCPU, int aPosition, char *aB
 }
 static int disasm_cjne_indir_rx_imm_offset(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"CJNE  R%d, #%03Xh, #%+d",
+    sprintf(aBuffer,"CJNE  @R%d, #%02Xh, #%+d",
         aCPU->mCodeMem[(aPosition)&(aCPU->mCodeMemSize-1)]&1,
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)],
         (signed char)(aCPU->mCodeMem[(aPosition + 2)&(aCPU->mCodeMemSize-1)]));
@@ -939,7 +939,10 @@ static int disasm_mov_indir_rx_a(struct em8051 *aCPU, int aPosition, char *aBuff
 
 static int disasm_nop(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"NOP");
+    if (aCPU->mCodeMem[aPosition&(aCPU->mCodeMemSize-1)])
+        sprintf(aBuffer,"??UNKNOWN");
+    else
+        sprintf(aBuffer,"NOP");
     return 1;
 }
 
@@ -988,7 +991,7 @@ static int disasm_xrl_a_rx(struct em8051 *aCPU, int aPosition, char *aBuffer)
 
 static int disasm_mov_rx_imm(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"MOV   R%d, #%03Xh",
+    sprintf(aBuffer,"MOV   R%d, #%02Xh",
         aCPU->mCodeMem[aPosition&(aCPU->mCodeMemSize-1)]&7,
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)]);
     return 2;
@@ -1022,7 +1025,7 @@ static int disasm_mov_rx_mem(struct em8051 *aCPU, int aPosition, char *aBuffer)
 
 static int disasm_cjne_rx_imm_offset(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
-    sprintf(aBuffer,"CJNE  R%d, #%03Xh, #%+d",
+    sprintf(aBuffer,"CJNE  R%d, #%02Xh, #%+d",
         aCPU->mCodeMem[aPosition&(aCPU->mCodeMemSize-1)]&7,
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)],
         (signed char)aCPU->mCodeMem[(aPosition + 2)&(aCPU->mCodeMemSize-1)]);
