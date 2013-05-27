@@ -13,7 +13,10 @@
 #include "emu8051.h"
 #include "emulator.h"
 
-void emu_popup(char *aTitle, char *aMessage)
+// store the object filename (Accessed through command line as well)
+char filename[256];
+
+void emu_popup(struct em8051 *aCPU, char *aTitle, char *aMessage)
 {
     WINDOW * exc;
     nocbreak();
@@ -43,7 +46,7 @@ void emu_popup(char *aTitle, char *aMessage)
 
     getch();
     delwin(exc);
-    refreshview();
+    refreshview(aCPU);
 }
 
 void emu_exception(struct em8051 *aCPU, int aCode)
@@ -80,6 +83,8 @@ void emu_exception(struct em8051 *aCPU, int aCode)
                                       break;
     case EXCEPTION_IRET_SP_MISMATCH: waddstr(exc,"SP not preserved over interrupt call"); 
                                      break;
+    case EXCEPTION_IRET_ACC_MISMATCH: waddstr(exc,"ACC not preserved over interrupt call"); 
+                                     break;
     case EXCEPTION_ILLEGAL_OPCODE: waddstr(exc,"Invalid opcode: 0xA5 encountered"); 
                                    break;
     default:
@@ -94,7 +99,7 @@ void emu_exception(struct em8051 *aCPU, int aCode)
 
     getch();
     delwin(exc);
-    change_view(MAIN_VIEW);
+    change_view(aCPU, MAIN_VIEW);
 }
 
 void emu_load(struct em8051 *aCPU)
@@ -108,11 +113,11 @@ void emu_load(struct em8051 *aCPU)
     runmode = 0;
     setSpeed(speed, runmode);
     exc = subwin(stdscr, 5, 50, (LINES-6)/2, (COLS-50)/2);
-    wattron(exc,A_REVERSE);
+    wattron(exc, A_REVERSE);
     werase(exc);
     box(exc,ACS_VLINE,ACS_HLINE);
     mvwaddstr(exc, 0, 2, "Load Intel HEX File");
-    wattroff(exc,A_REVERSE);
+    wattroff(exc, A_REVERSE);
     wmove(exc, 2, 2);
     //            12345678901234567890123456780123456789012345
     waddstr(exc,"[____________________________________________]"); 
@@ -134,7 +139,7 @@ void emu_load(struct em8051 *aCPU)
                 wrefresh(exc);
             }
         }
-        if (ch == 8)
+        if (ch == KEY_DC || ch == 8)
         {
             if (pos > 0)
             {
@@ -150,24 +155,24 @@ void emu_load(struct em8051 *aCPU)
 
     result = load_obj(aCPU, filename);
     delwin(exc);
-    refreshview();
+    refreshview(aCPU);
 
     switch (result)
     {
     case -1:
-        emu_popup("Load error", "File not found.");
+        emu_popup(aCPU, "Load error", "File not found.");
         break;
     case -2:
-        emu_popup("Load error", "Bad file format.");
+        emu_popup(aCPU, "Load error", "Bad file format.");
         break;
     case -3:
-        emu_popup("Load error", "Unsupported HEX file version.");
+        emu_popup(aCPU, "Load error", "Unsupported HEX file version.");
         break;
     case -4:
-        emu_popup("Load error", "Checksum failure.");
+        emu_popup(aCPU, "Load error", "Checksum failure.");
         break;
     case -5:
-        emu_popup("Load error", "No end of data marker found.");
+        emu_popup(aCPU, "Load error", "No end of data marker found.");
         break;
     }
 }
@@ -247,7 +252,7 @@ int emu_readvalue(struct em8051 *aCPU, const char *aPrompt, int aOldvalue, int a
                 waddch(exc,ch);
             }
         }
-        if (ch == 8)
+        if (ch == KEY_DC || ch == 8)
         {
             if (pos > 0)
             {
@@ -262,7 +267,7 @@ int emu_readvalue(struct em8051 *aCPU, const char *aPrompt, int aOldvalue, int a
     while (ch != '\n');
 
     delwin(exc);
-    refreshview();
+    refreshview(aCPU);
     return strtol(temp, NULL, 16);
 }
 
@@ -314,11 +319,11 @@ int emu_reset(struct em8051 *aCPU)
         break;
     }
     delwin(exc);
-    refreshview();
+    refreshview(aCPU);
     return result;
 }
 
-void emu_help()
+void emu_help(struct em8051 *aCPU)
 {
     WINDOW * exc;
     char temp[256];
@@ -337,7 +342,7 @@ void emu_help()
     wrefresh(exc);
 
     wmove(exc, 2, 2);
-    waddstr(exc, "8051 Emulator v. 0.3 - http://iki.fi/sol/");
+    waddstr(exc, "8051 Emulator v. 0.6 - http://iki.fi/sol/");
     wmove(exc, 3, 2);
     waddstr(exc, "Copyright (c) 2006 Jari Komppa");
     wmove(exc, 13, 22);
@@ -367,5 +372,5 @@ void emu_help()
     ch = getch();
 
     delwin(exc);
-    refreshview();
+    refreshview(aCPU);
 }

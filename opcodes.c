@@ -37,7 +37,7 @@ static int read_mem(struct em8051 *aCPU, int aAddress)
     }
 }
 
-static void push_to_stack(struct em8051 *aCPU, int aValue)
+void push_to_stack(struct em8051 *aCPU, int aValue)
 {
     aCPU->mSFR[REG_SP]++;
     if (aCPU->mSFR[REG_SP] > 0x7f)
@@ -430,7 +430,27 @@ static int jnb_bitaddr_offset(struct em8051 *aCPU)
 
 static int reti(struct em8051 *aCPU)
 {
-    // TODO: interrupt logic
+    if (aCPU->mInterruptActive)
+    {
+        if (aCPU->except)
+        {
+            int hi = 0;
+            if (aCPU->mInterruptActive > 1)
+                hi = 1;
+            if (aCPU->int_a[hi] != aCPU->mSFR[REG_ACC])
+                aCPU->except(aCPU, EXCEPTION_IRET_ACC_MISMATCH);
+            if (aCPU->int_sp[hi] != aCPU->mSFR[REG_SP])
+                aCPU->except(aCPU, EXCEPTION_IRET_SP_MISMATCH);    
+            if ((aCPU->int_psw[hi] & (PSWMASK_OV | PSWMASK_RS0 | PSWMASK_RS1 | PSWMASK_AC | PSWMASK_C)) !=                 
+                (aCPU->mSFR[REG_PSW] & (PSWMASK_OV | PSWMASK_RS0 | PSWMASK_RS1 | PSWMASK_AC | PSWMASK_C)))
+                aCPU->except(aCPU, EXCEPTION_IRET_PSW_MISMATCH);
+        }
+
+        if (aCPU->mInterruptActive & 2)
+            aCPU->mInterruptActive &= ~2;
+        else
+            aCPU->mInterruptActive = 0;
+    }
 
     PC = pop_from_stack(aCPU) << 8;
     PC |= pop_from_stack(aCPU);

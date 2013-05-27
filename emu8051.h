@@ -35,6 +35,13 @@ struct em8051
     em8051exception except; // callback: exceptional situation occurred
     em8051sfrread sfrread; // callback: SFR register being read
     em8051sfrwrite sfrwrite; // callback: SFR register written
+
+    // Internal values for interrupt services etc.
+    int mInterruptActive;
+    // Stored register values for interrupts (exception checking)
+    int int_a[2];
+    int int_psw[2];
+    int int_sp[2];
 };
 
 // set the emulator into reset state. Must be called before tick(), as
@@ -57,6 +64,10 @@ int load_obj(struct em8051 *aCPU, char *aFilename);
 // Alternate way to execute an opcode (switch-structure instead of function pointers)
 int do_op(struct em8051 *aCPU);
 
+// Internal: Pushes a value into stack
+void push_to_stack(struct em8051 *aCPU, int aValue);
+
+
 // SFR register locations
 enum SFR_REGS
 {
@@ -72,7 +83,7 @@ enum SFR_REGS
     REG_P3  = 0xB0 - 0x80,
     REG_IP  = 0xB8 - 0x80,
     REG_IE  = 0xA8 - 0x80,
-    REG_TIMOD = 0x89 - 0x80,
+    REG_TMOD = 0x89 - 0x80,
     REG_TCON = 0x88 - 0x80,
     REG_TH0 = 0x8C - 0x80,
     REG_TL0 = 0x8A - 0x80,
@@ -106,11 +117,71 @@ enum PSW_MASKS
     PSWMASK_C = 0x80
 };
 
+enum IE_MASKS
+{
+    IEMASK_EX0 = 0x01,
+    IEMASK_ET0 = 0x02,
+    IEMASK_EX1 = 0x04,
+    IEMASK_ET1 = 0x08,
+    IEMASK_ES  = 0x10,
+    IEMASK_ET2 = 0x20,
+    IEMASK_UNUSED = 0x40,
+    IEMASK_EA  = 0x80
+};
+
+enum PT_MASKS
+{
+    PTMASK_PX0 = 0x01,
+    PTMASK_PT0 = 0x02,
+    PTMASK_PX1 = 0x04,
+    PTMASK_PT1 = 0x08,
+    PTMASK_PS  = 0x10,
+    PTMASK_PT2 = 0x20,
+    PTMASK_UNUSED1 = 0x40,
+    PTMASK_UNUSED2 = 0x80
+};
+
+enum TCON_MASKS
+{
+    TCONMASK_IT0 = 0x01,
+    TCONMASK_IE0 = 0x02,
+    TCONMASK_IT1 = 0x04,
+    TCONMASK_IE1 = 0x08,
+    TCONMASK_TR0 = 0x10,
+    TCONMASK_TF0 = 0x20,
+    TCONMASK_TR1 = 0x40,
+    TCONMASK_TF1 = 0x80
+};
+
+enum TMOD_MASKS
+{
+    TMODMASK_M0_0 = 0x01,
+    TMODMASK_M1_0 = 0x02,
+    TMODMASK_CT_0 = 0x04,
+    TMODMASK_GATE_0 = 0x08,
+    TMODMASK_M0_1 = 0x10,
+    TMODMASK_M1_1 = 0x20,
+    TMODMASK_CT_1 = 0x40,
+    TMODMASK_GATE_1 = 0x80
+};
+
+enum IP_MASKS
+{
+    IPMASK_PX0 = 0x01,
+    IPMASK_PT0 = 0x02,
+    IPMASK_PX1 = 0x04,
+    IPMASK_PT1 = 0x08,
+    IPMASK_PS  = 0x10,
+    IPMASK_PT2 = 0x20
+};
+
 enum EM8051_EXCEPTION
 {
     EXCEPTION_STACK,  // stack address > 127 with no upper memory, or roll over
     EXCEPTION_ACC_TO_A, // acc-to-a move operation; illegal (acc-to-acc is ok, a-to-acc is ok..)
     EXCEPTION_IRET_PSW_MISMATCH, // psw not preserved over interrupt call (doesn't care about P, F0 or UNUSED)
     EXCEPTION_IRET_SP_MISMATCH,  // sp not preserved over interrupt call
+    EXCEPTION_IRET_ACC_MISMATCH, // acc not preserved over interrupt call
     EXCEPTION_ILLEGAL_OPCODE     // for the single 'reserved' opcode in the architecture
 };
+

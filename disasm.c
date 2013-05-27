@@ -72,8 +72,8 @@ void mem_memonic(int aValue, char *aBuffer)
             strcpy(aBuffer, "IE");
             done = 1;
             break;
-        case REG_TIMOD:
-            strcpy(aBuffer, "TIMOD");
+        case REG_TMOD:
+            strcpy(aBuffer, "TMOD");
             done = 1;
             break;
         case REG_TCON:
@@ -156,8 +156,8 @@ void bitaddr_memonic(int aValue, char *aBuffer)
         case REG_IE:
             strcpy(regname, "IE");
             break;
-        case REG_TIMOD:
-            strcpy(regname, "TIMOD");
+        case REG_TMOD:
+            strcpy(regname, "TMOD");
             break;
         case REG_TCON:
             strcpy(regname, "TCON");

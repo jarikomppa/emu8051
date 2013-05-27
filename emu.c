@@ -6,15 +6,12 @@
  * Curses-based emulator front-end
  */
 
-/*
-short term TODO:
-- refactor this mess
-*/
-
 #ifdef _MSC_VER
 #include <windows.h>
+#undef MOUSE_MOVED
 #else
 #include <sys/time.h>
+#include <unistd.h>
 #endif
 
 #include <stdio.h>
@@ -24,37 +21,8 @@ short term TODO:
 #include "emu8051.h"
 #include "emulator.h"
 
-// code box (PC, opcode, assembly)
-WINDOW *codebox = NULL, *codeoutput = NULL;
-char *codelines[HISTORY_LINES];
+unsigned char history[HISTORY_LINES * (128 + 64 + sizeof(int))];
 
-// Registers box (a, r0..7, b, dptr)
-WINDOW *regbox = NULL, *regoutput = NULL;
-char *reglines[HISTORY_LINES];
-
-// RAM view/edit box
-WINDOW *rambox = NULL, *ramview = NULL;
-
-// stack view
-WINDOW *stackbox = NULL, *stackview = NULL;
-
-// program status word box
-WINDOW *pswbox = NULL, *pswoutput = NULL;
-char *pswlines[HISTORY_LINES];
-
-// IO registers box
-WINDOW *ioregbox = NULL, *ioregoutput = NULL;
-char *ioreglines[HISTORY_LINES];
-
-// special registers box
-WINDOW *spregbox = NULL, *spregoutput = NULL;
-char *spreglines[HISTORY_LINES];
-
-// misc. stuff box
-WINDOW *miscbox = NULL, *miscview = NULL;
-
-// store the object filename
-char filename[256];
 
 // current line in the history cyclic buffers
 int historyline = 0;
@@ -64,14 +32,9 @@ int oldcols, oldrows;
 int runmode = 0;
 // current run speed, lower is faster
 int speed = 6;
-// focused component
-int focus = 0;
-// memory window cursor position
-int memcursorpos = 0;
-// memory window offset
-int memoffset = 0;
-// pointer to the memory area being viewed
-unsigned char *memarea = NULL;
+
+// instruction count; needed to replay history correctly
+unsigned int icount = 0;
 
 // current clock count
 unsigned int clocks = 0;
@@ -96,6 +59,15 @@ int getTick()
     struct timeval now;
     gettimeofday(&now, NULL);
     return now.tv_sec * 1000 + now.tv_usec / 1000;
+#endif
+}
+
+void emu_sleep(int value)
+{
+#ifdef _MSC_VER
+    Sleep(value);
+#else
+    usleep(value * 1000);
 #endif
 }
 
@@ -203,12 +175,12 @@ int emu_sfrread(struct em8051 *aCPU, int aRegister)
     
 }
 
-void refreshview()
+void refreshview(struct em8051 *aCPU)
 {
-    change_view(view);
+    change_view(aCPU, view);
 }
 
-void change_view(int changeto)
+void change_view(struct em8051 *aCPU, int changeto)
 {
     switch (view)
     {
@@ -218,40 +190,31 @@ void change_view(int changeto)
     case LOGICBOARD_VIEW:
         wipe_logicboard_view();
         break;
+    case MEMEDITOR_VIEW:
+        wipe_memeditor_view();
+        break;
     }
     view = changeto;
     switch (view)
     {
     case MAIN_VIEW:
-        build_main_view();
+        build_main_view(aCPU);
         break;
     case LOGICBOARD_VIEW:
-        build_logicboard_view();
+        build_logicboard_view(aCPU);
+        break;
+    case MEMEDITOR_VIEW:
+        build_memeditor_view(aCPU);
         break;
     }
 }
 
 int main(int parc, char ** pars) 
 {
-    char assembly[256];
     int ch = 0;
     struct em8051 emu;
     int i;
     int ticked = 1;
-
-    for (i = 0; i < HISTORY_LINES; i++)
-    {
-        codelines[i] = malloc(128);
-        strcpy(codelines[i],"\n");
-        reglines[i] = malloc(128);
-        strcpy(reglines[i],"\n");
-        pswlines[i] = malloc(128);
-        strcpy(pswlines[i],"\n");
-        ioreglines[i] = malloc(128);
-        strcpy(ioreglines[i],"\n");
-        spreglines[i] = malloc(128);
-        strcpy(spreglines[i],"\n");
-    }
 
     memset(&emu, 0, sizeof(emu));
     emu.mCodeMem     = malloc(65536);
@@ -263,7 +226,6 @@ int main(int parc, char ** pars)
     emu.mSFR         = malloc(128);
     emu.except       = &emu_exception;
     emu.sfrread      = &emu_sfrread;
-    memarea = emu.mLowerData;
     reset(&emu, 1);
     i = 0x100;
 
@@ -280,7 +242,7 @@ int main(int parc, char ** pars)
         }
     }
 
-    /*  Initialize ncurses  */
+    //  Initialize ncurses
 
     slk_init(1);
     if ( (initscr()) == NULL ) {
@@ -298,62 +260,33 @@ int main(int parc, char ** pars)
     setSpeed(speed, runmode);
    
 
-    /*  Switch of echoing and enable keypad (for arrow keys)  */
+    //  Switch of echoing and enable keypad (for arrow keys etc)
 
     cbreak(); // no buffering
     noecho(); // no echoing
     keypad(stdscr, TRUE); // cursors entered as single characters
 
-    build_main_view();
+    build_main_view(&emu);
 
-    /*  Loop until user hits 'shift-Q' to quit  */
+    // Loop until user hits 'shift-Q'
 
     do
     {
         if (LINES != oldrows ||
             COLS != oldcols)
         {
-            refreshview();
+            refreshview(&emu);
         }
         switch (ch)
         {
         case 'v':
-            change_view((view + 1) % 2);
-            break;
-        case '\t':
-            memcursorpos = 0;
-            memoffset = 0;
-            focus++;
-            if (focus == 1 && emu.mUpperData == NULL) 
-                focus++;
-            if (focus == 3 && emu.mExtDataSize == 0)
-                focus++;
-            if (focus == 5)
-                focus = 0;
-            switch (focus)
-            {
-            case 0:
-                memarea = emu.mLowerData;
-                break;
-            case 1:
-                memarea = emu.mUpperData;
-                break;
-            case 2:
-                memarea = emu.mSFR;
-                break;
-            case 3:
-                memarea = emu.mExtData;
-                break;
-            case 4:
-                memarea = emu.mCodeMem;
-                break;
-            }
+            change_view(&emu, (view + 1) % 3);
             break;
         case 'k':
             if (breakpoint != -1)
             {
                 breakpoint = -1;
-                emu_popup("Breakpoint", "Breakpoint cleared.");
+                emu_popup(&emu, "Breakpoint", "Breakpoint cleared.");
             }
             else
             {
@@ -364,7 +297,7 @@ int main(int parc, char ** pars)
             emu.mPC = emu_readvalue(&emu, "Set Program Counter", emu.mPC, 4);
             break;
         case 'h':
-            emu_help();
+            emu_help(&emu);
             break;
         case 'l':
             emu_load(&emu);
@@ -407,6 +340,10 @@ int main(int parc, char ** pars)
                 speed = 7;
             setSpeed(speed, runmode);
             break;
+        case KEY_NEXT:
+        case '\t':
+        case KEY_NPAGE:
+        case KEY_PPAGE:
         case KEY_LEFT:
         case KEY_RIGHT:
         case KEY_DOWN:
@@ -441,6 +378,9 @@ int main(int parc, char ** pars)
             case LOGICBOARD_VIEW:
                 logicboard_editor_keys(&emu, ch);
                 break;
+            case MEMEDITOR_VIEW:
+                memeditor_editor_keys(&emu, ch);
+                break;
             }
             break;
         case KEY_HOME:
@@ -459,12 +399,8 @@ int main(int parc, char ** pars)
 
         if (ch == 32 || runmode)
         {
-            int opcode_bytes;
-            int stringpos;
             int targettime;
             unsigned int targetclocks;
-            int rx;
-            int i;
             targetclocks = clocks;
             targettime = getTick();
             if (speed < 2 && runmode)
@@ -479,81 +415,28 @@ int main(int parc, char ** pars)
                 old_pc = emu.mPC;
                 clocks += 12;
                 ticked = tick(&emu);
+                logicboard_tick(&emu);
+                
                 if (emu.mPC == breakpoint)
                     emu_exception(&emu, -1);
-                if (ticked && (speed != 0 || runmode == 0))
+
+                if (ticked)
                 {
+                    icount++;
+
                     historyline = (historyline + 1) % HISTORY_LINES;
 
-                    opcode_bytes = decode(&emu, old_pc, assembly);
-                    stringpos = 0;
-                    stringpos += sprintf(codelines[historyline] + stringpos,"\n%04X  ", old_pc & 0xffff);
-                    for (i = 0; i < opcode_bytes; i++)
-                        stringpos += sprintf(codelines[historyline] + stringpos,"%02X ", emu.mCodeMem[(old_pc + i) & (emu.mCodeMemSize - 1)]);
-                    for (i = opcode_bytes; i < 3; i++)
-                        stringpos += sprintf(codelines[historyline] + stringpos,"   ");
-                    sprintf(codelines[historyline] + stringpos," %s",assembly);                    
-                    rx = 8 * ((emu.mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
-                    
-                    sprintf(reglines[historyline], "\n%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %04X",
-                        emu.mSFR[REG_ACC],
-                        emu.mLowerData[0 + rx],
-                        emu.mLowerData[1 + rx],
-                        emu.mLowerData[2 + rx],
-                        emu.mLowerData[3 + rx],
-                        emu.mLowerData[4 + rx],
-                        emu.mLowerData[5 + rx],
-                        emu.mLowerData[6 + rx],
-                        emu.mLowerData[7 + rx],
-                        emu.mSFR[REG_B],
-                        (emu.mSFR[REG_DPH]<<8)|emu.mSFR[REG_DPL]);
-
-                    sprintf(pswlines[historyline], "\n%d %d %d %d %d %d %d %d",
-                        (emu.mSFR[REG_PSW] >> 7) & 1,
-                        (emu.mSFR[REG_PSW] >> 6) & 1,
-                        (emu.mSFR[REG_PSW] >> 5) & 1,
-                        (emu.mSFR[REG_PSW] >> 4) & 1,
-                        (emu.mSFR[REG_PSW] >> 3) & 1,
-                        (emu.mSFR[REG_PSW] >> 2) & 1,
-                        (emu.mSFR[REG_PSW] >> 1) & 1,
-                        (emu.mSFR[REG_PSW] >> 0) & 1);
-
-                    sprintf(ioreglines[historyline], "\n%02X %02X %02X %02X %02X %02X %02X",
-                        emu.mSFR[REG_SP],
-                        emu.mSFR[REG_P0],
-                        emu.mSFR[REG_P1],
-                        emu.mSFR[REG_P2],
-                        emu.mSFR[REG_P3],
-                        emu.mSFR[REG_IP],
-                        emu.mSFR[REG_IE]);
-
-                    sprintf(spreglines[historyline], "\n%02X    %02X    %02X  %02X   %02X  %02X   %02X   %02X",
-                        emu.mSFR[REG_TIMOD],
-                        emu.mSFR[REG_TCON],
-                        emu.mSFR[REG_TH0],
-                        emu.mSFR[REG_TL0],
-                        emu.mSFR[REG_TH1],
-                        emu.mSFR[REG_TL1],
-                        emu.mSFR[REG_SCON],
-                        emu.mSFR[REG_PCON]);
-
-                    if (view == MAIN_VIEW && (speed > 0 || runmode == 0))
-                    {
-                        wprintw(codeoutput," %s",codelines[historyline]);
-                        wprintw(regoutput,"%s",reglines[historyline]);
-                        wprintw(pswoutput,"%s",pswlines[historyline]);
-                        wprintw(ioregoutput,"%s",ioreglines[historyline]);
-                        wprintw(spregoutput,"%s",spreglines[historyline]);
-                    }
+                    memcpy(history + (historyline * (128 + 64 + sizeof(int))), emu.mSFR, 128);
+                    memcpy(history + (historyline * (128 + 64 + sizeof(int))) + 128, emu.mLowerData, 64);
+                    memcpy(history + (historyline * (128 + 64 + sizeof(int))) + 128 + 64, &old_pc, sizeof(int));
                 }
             }
             while (targettime > getTick() && targetclocks > clocks);
             
             while (targettime > getTick())
             {
-                Sleep(1);
+                emu_sleep(1);
             }
-
         }
 
         switch (view)
@@ -563,6 +446,9 @@ int main(int parc, char ** pars)
             break;
         case LOGICBOARD_VIEW:
             logicboard_update(&emu);
+            break;
+        case MEMEDITOR_VIEW:
+            memeditor_update(&emu);
             break;
         }
     }

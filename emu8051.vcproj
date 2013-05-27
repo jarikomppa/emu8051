@@ -134,20 +134,39 @@
 			Filter="cpp;c;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}">
 			<File
-				RelativePath=".\core.c">
-			</File>
-			<File
-				RelativePath=".\disasm.c">
-			</File>
-			<File
 				RelativePath=".\emu.c">
 			</File>
 			<File
-				RelativePath=".\emu8051.h">
+				RelativePath=".\emulator.h">
 			</File>
 			<File
-				RelativePath=".\opcodes.c">
+				RelativePath=".\logicboard.c">
 			</File>
+			<File
+				RelativePath=".\mainview.c">
+			</File>
+			<File
+				RelativePath=".\memeditor.c">
+			</File>
+			<File
+				RelativePath=".\popups.c">
+			</File>
+			<Filter
+				Name="core"
+				Filter="">
+				<File
+					RelativePath=".\core.c">
+				</File>
+				<File
+					RelativePath=".\disasm.c">
+				</File>
+				<File
+					RelativePath=".\emu8051.h">
+				</File>
+				<File
+					RelativePath=".\opcodes.c">
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
