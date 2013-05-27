@@ -6,6 +6,15 @@
  * General emulation functions
  */
 
+/*
+General unknowns:
+- what happens when SP grows over 127? 
+  Does it grow over upper memory area if available? or bleed over sfr:s?
+- what should @R0 (R0>127) point at if there's no upper memory? 
+  SFR? loop back to lower memory? fail?
+- should MOVX commands mess up P0 and P2 somehow?
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,12 +28,20 @@ int decode(struct em8051 *aCPU, int aPosition, unsigned char *aBuffer)
 
 int tick(struct em8051 *aCPU)
 {
+    int v;
     if (aCPU->mTickDelay)
     {
         aCPU->mTickDelay--;
         return 0;
     }
     aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemSize - 1)]](aCPU);
+    // update parity bit
+    v = aCPU->mSFR[REG_ACC];
+    v ^= v >> 4;
+    v &= 0xf;
+    v = (0x6996 >> v) & 1;
+    aCPU->mSFR[REG_PSW] = (aCPU->mSFR[REG_PSW] & ~PSWMASK_P) | (v * PSWMASK_P);
+
     return 1;
 }
 
@@ -190,6 +207,7 @@ int main(void) {
     int speed = 6;
     int ticked = 1;
 
+    memset(&emu, 0, sizeof(emu));
     emu.mCodeMem     = malloc(65536);
     emu.mCodeMemSize = 65536;
     emu.mExtData     = malloc(65536);
@@ -200,7 +218,7 @@ int main(void) {
     reset(&emu);
     i = 0x100;
 
-    if (load_obj(&emu, "spede.obj") != 0)
+    if (load_obj(&emu, "lab3c.obj") != 0)
         return;
 
     /*  Initialize ncurses  */
@@ -387,12 +405,16 @@ int main(void) {
                 r = 1000;
             for (i = 0; i < r; i++)
             {
+                int old_pc;
+                old_pc = emu.mPC;
+                clocks += 12;
+                ticked = tick(&emu);
                 if (ticked && speed != 0)
                 {
-                    l = decode(&emu, emu.mPC, temp);
-                    wprintw(codeoutput,"\n%04X   ", emu.mPC & 0xffff);
+                    l = decode(&emu, old_pc, temp);
+                    wprintw(codeoutput,"\n%04X   ", old_pc & 0xffff);
                     for (m = 0; m < l; m++)
-                        wprintw(codeoutput,"%02X ", emu.mCodeMem[emu.mPC+m]);
+                        wprintw(codeoutput,"%02X ", emu.mCodeMem[old_pc+m]);
                     for (m = l; m < 3; m++)
                         wprintw(codeoutput,"   ");
                     wprintw(codeoutput,"  %s",temp);
@@ -441,8 +463,6 @@ int main(void) {
                         emu.mSFR[REG_SCON],
                         emu.mSFR[REG_PCON]);
                 }
-                clocks += 12;
-                ticked = tick(&emu);
             }
 
             wclear(miscview);
@@ -472,7 +492,7 @@ int main(void) {
         for (i = 0; i < 14; i++)
         {
             wprintw(stackview," %02X\n", 
-                emu.mLowerData[(i+emu.mSFR[REG_SP]-8)&0xff]);
+                emu.mLowerData[(i+emu.mSFR[REG_SP]-7)&0x7f]);
         }
 
         if (speed != 0)

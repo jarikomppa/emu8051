@@ -13,9 +13,18 @@
 
 static void add_solve_flags(struct em8051 * aCPU, int value1, int value2)
 {
-    int carry = ((value1 & 255) + (value2 & 255)) >> 7;
+    int carry = ((value1 & 255) + (value2 & 255)) >> 8;
     int auxcarry = ((value1 & 7) + (value2 & 7)) >> 3;
-    int overflow = (((value1 & 127) + (value2 & 127)) >> 6)^carry;
+    int overflow = (((value1 & 127) + (value2 & 127)) >> 7)^carry;
+    aCPU->mSFR[REG_PSW] = (aCPU->mSFR[REG_PSW] & ~(PSWMASK_C|PSWMASK_AC|PSWMASK_OV)) |
+                          (carry << PSW_C) | (auxcarry << PSW_AC) | (overflow << PSW_OV);
+}
+
+static void sub_solve_flags(struct em8051 * aCPU, int value1, int value2)
+{
+    int carry = (((value1 & 255) - (value2 & 255)) >> 8) & 1;
+    int auxcarry = (((value1 & 7) - (value2 & 7)) >> 3) & 1;
+    int overflow = ((((value1 & 127) - (value2 & 127)) >> 7) & 1)^carry;
     aCPU->mSFR[REG_PSW] = (aCPU->mSFR[REG_PSW] & ~(PSWMASK_C|PSWMASK_AC|PSWMASK_OV)) |
                           (carry << PSW_C) | (auxcarry << PSW_AC) | (overflow << PSW_OV);
 }
@@ -63,6 +72,8 @@ static int inc_mem(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80]++;
+        if (aCPU->sfrwrite)
+            aCPU->sfrwrite(aCPU, address);
     }
     else
     {
@@ -80,9 +91,15 @@ static int inc_indir_rx(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         if (aCPU->mUpperData)
+        {
             aCPU->mUpperData[address - 0x80]++;
+        }
         else
+        {
             aCPU->mSFR[address - 0x80]++;
+            if (aCPU->sfrwrite)
+                aCPU->sfrwrite(aCPU, address);
+        }
     }
     else
     {
@@ -109,21 +126,31 @@ static int jbc_bitaddr_offset(struct em8051 *aCPU)
 
 static int acall_offset(struct em8051 *aCPU)
 {
-    printf("ACALL %05Xh\n",
-        (aCPU->mPC + 2) & 0xf800 |
+    int address = (aCPU->mPC + 2) & 0xf800 |
         aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)] | 
-        ((aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 0xe0) << 3));
+        ((aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 0xe0) << 3);
+    aCPU->mSFR[REG_SP]++;
+    aCPU->mLowerData[aCPU->mSFR[REG_SP] & 0x7f] = (aCPU->mPC + 2) & 0xff;
+    aCPU->mSFR[REG_SP]++;
+    aCPU->mLowerData[aCPU->mSFR[REG_SP] & 0x7f] = (aCPU->mPC + 2) >> 8;
+    aCPU->mPC = address;
+    if (aCPU->mSFR[REG_SP] >= 0x80)
+        if (aCPU->except)
+            aCPU->except(aCPU, EXCEPTION_STACK);
     return 1;
 }
 
 static int lcall_address(struct em8051 *aCPU)
 {
     aCPU->mSFR[REG_SP]++;
-    aCPU->mLowerData[aCPU->mSFR[REG_SP]] = (aCPU->mPC + 3) & 0xff;
+    aCPU->mLowerData[aCPU->mSFR[REG_SP] & 0x7f] = (aCPU->mPC + 3) & 0xff;
     aCPU->mSFR[REG_SP]++;
-    aCPU->mLowerData[aCPU->mSFR[REG_SP]] = (aCPU->mPC + 3) >> 8;
+    aCPU->mLowerData[aCPU->mSFR[REG_SP] & 0x7f] = (aCPU->mPC + 3) >> 8;
     aCPU->mPC = (aCPU->mCodeMem[(aCPU->mPC + 1) & (aCPU->mCodeMemSize-1)] << 8) | 
                 (aCPU->mCodeMem[(aCPU->mPC + 2) & (aCPU->mCodeMemSize-1)] << 0);
+    if (aCPU->mSFR[REG_SP] >= 0x80)
+        if (aCPU->except)
+            aCPU->except(aCPU, EXCEPTION_STACK);
     return 1;
 }
 
@@ -151,6 +178,8 @@ static int dec_mem(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80]--;
+        if (aCPU->sfrwrite)
+            aCPU->sfrwrite(aCPU, address);
     }
     else
     {
@@ -162,8 +191,26 @@ static int dec_mem(struct em8051 *aCPU)
 
 static int dec_indir_rx(struct em8051 *aCPU)
 {
-    printf("DEC   @R%d\n",        
-        aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 1);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 1) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int address = aCPU->mLowerData[rx];
+    if (address > 0x7f)
+    {
+        if (aCPU->mUpperData)
+        {
+            aCPU->mUpperData[address - 0x80]--;
+        }
+        else
+        {
+            aCPU->mSFR[address - 0x80]--;
+            if (aCPU->sfrwrite)
+                aCPU->sfrwrite(aCPU, address);
+        }
+    }
+    else
+    {
+        aCPU->mLowerData[address]--;
+    }
     aCPU->mPC++;
     return 0;
 }
@@ -180,9 +227,12 @@ static int jb_bitaddr_offset(struct em8051 *aCPU)
 static int ret(struct em8051 *aCPU)
 {
     // possible stack underflow problem..
-    aCPU->mPC = (aCPU->mLowerData[aCPU->mSFR[REG_SP]] << 8) |
-                (aCPU->mLowerData[aCPU->mSFR[REG_SP] - 1] << 0);
+    aCPU->mPC = (aCPU->mLowerData[(aCPU->mSFR[REG_SP]    ) & 0x7f] << 8) |
+                (aCPU->mLowerData[(aCPU->mSFR[REG_SP] - 1) & 0x7f] << 0);
     aCPU->mSFR[REG_SP] -= 2;
+    if (aCPU->mSFR[REG_SP] >= 0x80)
+        if (aCPU->except)
+            aCPU->except(aCPU, EXCEPTION_STACK);
     return 1;
 }
 
@@ -207,8 +257,14 @@ static int add_a_mem(struct em8051 *aCPU)
     int address = aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)];
     if (address > 0x7f)
     {
-        add_solve_flags(aCPU, aCPU->mSFR[REG_ACC], aCPU->mSFR[address - 0x80]);
-        aCPU->mSFR[REG_ACC] += aCPU->mSFR[address - 0x80];
+        int value;
+        if (aCPU->sfrread)
+            value = aCPU->sfrread(aCPU, address);
+        else
+            value = aCPU->mSFR[address - 0x80];
+
+        add_solve_flags(aCPU, aCPU->mSFR[REG_ACC], value);
+        aCPU->mSFR[REG_ACC] += value;
     }
     else
     {
@@ -226,8 +282,21 @@ static int add_a_indir_rx(struct em8051 *aCPU)
     int address = aCPU->mLowerData[rx];
     if (address > 0x7f)
     {
-        add_solve_flags(aCPU, aCPU->mSFR[REG_ACC], aCPU->mSFR[address - 0x80]);
-        aCPU->mSFR[REG_ACC] += aCPU->mSFR[address - 0x80];
+        int value;
+        if (aCPU->mUpperData)
+        {
+            value = aCPU->mUpperData[address - 0x80];
+        }
+        else
+        {
+            if (aCPU->sfrread)
+                value = aCPU->sfrread(aCPU, address);
+            else
+                value = aCPU->mSFR[address - 0x80];
+        }
+
+        add_solve_flags(aCPU, aCPU->mSFR[REG_ACC], value);
+        aCPU->mSFR[REG_ACC] += value;
     }
     else
     {
@@ -280,13 +349,18 @@ static int addc_a_mem(struct em8051 *aCPU)
     int address = aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)];
     if (address > 0x7f)
     {
-        add_solve_flags(aCPU, aCPU->mSFR[REG_ACC], aCPU->mSFR[address - 0x80] + carry);
-        aCPU->mSFR[REG_ACC] += aCPU->mSFR[address - 0x80];
+        int value;
+        if (aCPU->sfrread)
+            value = aCPU->sfrread(aCPU, address) + carry;
+        else
+            value = aCPU->mSFR[address - 0x80] + carry;
+        add_solve_flags(aCPU, aCPU->mSFR[REG_ACC], value);
+        aCPU->mSFR[REG_ACC] += value;
     }
     else
     {
         add_solve_flags(aCPU, aCPU->mSFR[REG_ACC], aCPU->mLowerData[address] + carry);
-        aCPU->mSFR[REG_ACC] += aCPU->mLowerData[address];
+        aCPU->mSFR[REG_ACC] += aCPU->mLowerData[address] + carry;
     }
     aCPU->mPC += 2;
     return 0;
@@ -294,8 +368,33 @@ static int addc_a_mem(struct em8051 *aCPU)
 
 static int addc_a_indir_rx(struct em8051 *aCPU)
 {
-    printf("ADDC  A, @R%d\n",        
-        aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)]&1);
+    int carry = (aCPU->mSFR[REG_PSW] & PSWMASK_C) >> PSW_C;
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 1) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int address = aCPU->mLowerData[rx];
+    if (address > 0x7f)
+    {
+        int value;
+        if (aCPU->mUpperData)
+        {
+            value = aCPU->mUpperData[address - 0x80];
+        }
+        else
+        {
+            if (aCPU->sfrread)
+                value = aCPU->sfrread(aCPU, address);
+            else
+                value = aCPU->mSFR[address - 0x80];
+        }
+
+        add_solve_flags(aCPU, aCPU->mSFR[REG_ACC], value);
+        aCPU->mSFR[REG_ACC] += value;
+    }
+    else
+    {
+        add_solve_flags(aCPU, aCPU->mSFR[REG_ACC], aCPU->mLowerData[address] + carry);
+        aCPU->mSFR[REG_ACC] += aCPU->mLowerData[address] + carry;
+    }
     aCPU->mPC++;
     return 0;
 }
@@ -318,6 +417,8 @@ static int orl_mem_a(struct em8051 *aCPU)
 {
     printf("ORL   %03Xh, A\n",        
         aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+    //if (aCPU->sfrwrite)
+    //    aCPU->sfrwrite(aCPU, address);
     aCPU->mPC += 2;
     return 0;
 }
@@ -327,6 +428,9 @@ static int orl_mem_imm(struct em8051 *aCPU)
     printf("ORL   %03Xh, #%03Xh\n",        
         aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)],
         aCPU->mCodeMem[(aCPU->mPC + 2)&(aCPU->mCodeMemSize-1)]);
+//    if (aCPU->sfrwrite)
+//        aCPU->sfrwrite(aCPU, address);
+    
     aCPU->mPC += 3;
     return 1;
 }
@@ -344,7 +448,12 @@ static int orl_a_mem(struct em8051 *aCPU)
     int address = aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)];
     if (address > 0x7f)
     {
-        aCPU->mSFR[REG_ACC] |= aCPU->mSFR[address - 0x80];
+        int value;
+        if (aCPU->sfrread)
+            value = aCPU->sfrread(aCPU, address);
+        else
+            value = aCPU->mSFR[address - 0x80];
+        aCPU->mSFR[REG_ACC] |= value;
     }
     else
     {
@@ -356,8 +465,31 @@ static int orl_a_mem(struct em8051 *aCPU)
 
 static int orl_a_indir_rx(struct em8051 *aCPU)
 {
-    printf("ORL   A, @R%d\n",        
-        aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)]&1);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 1) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int address = aCPU->mLowerData[rx];
+    if (address > 0x7f)
+    {
+        int value;
+        if (aCPU->mUpperData)
+        {
+            value = aCPU->mUpperData[address - 0x80];
+        }
+        else
+        {
+            if (aCPU->sfrread)
+                value = aCPU->sfrread(aCPU, address);
+            else
+                value = aCPU->mSFR[address - 0x80];
+        }
+
+        aCPU->mSFR[REG_ACC] |= value;
+    }
+    else
+    {
+        aCPU->mSFR[REG_ACC] |= aCPU->mLowerData[address];
+    }
+
     aCPU->mPC++;
     return 0;
 }
@@ -380,6 +512,8 @@ static int anl_mem_a(struct em8051 *aCPU)
 {
     printf("ANL   %03Xh, A\n",
         aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+//        if (aCPU->sfrwrite)
+//            aCPU->sfrwrite(aCPU, address);
     aCPU->mPC += 2;
     return 0;
 }
@@ -390,6 +524,8 @@ static int anl_mem_imm(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80] &= aCPU->mCodeMem[(aCPU->mPC + 2)&(aCPU->mCodeMemSize-1)];
+        if (aCPU->sfrwrite)
+            aCPU->sfrwrite(aCPU, address);
     }
     else
     {
@@ -410,14 +546,43 @@ static int anl_a_mem(struct em8051 *aCPU)
 {
     printf("ANL   A, %03Xh\n",
         aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+/*  
+    int value;
+        if (aCPU->sfrread)
+            value = aCPU->sfrread(aCPU, address);
+        else
+            value = aCPU->mSFR[address - 0x80];
+*/
     aCPU->mPC += 2;
     return 0;
 }
 
 static int anl_a_indir_rx(struct em8051 *aCPU)
 {
-    printf("ANL   A, @R%d\n",        
-        aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)]&1);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 1) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int address = aCPU->mLowerData[rx];
+    if (address > 0x7f)
+    {
+        int value;
+        if (aCPU->mUpperData)
+        {
+            value = aCPU->mUpperData[address - 0x80];
+        }
+        else
+        {
+            if (aCPU->sfrread)
+                value = aCPU->sfrread(aCPU, address);
+            else
+                value = aCPU->mSFR[address - 0x80];
+        }
+
+        aCPU->mSFR[REG_ACC] &= value;
+    }
+    else
+    {
+        aCPU->mSFR[REG_ACC] &= aCPU->mLowerData[address];
+    }
     aCPU->mPC++;
     return 0;
 }
@@ -440,15 +605,25 @@ static int xrl_mem_a(struct em8051 *aCPU)
 {
     printf("XRL   %03Xh, A\n",
         aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+//        if (aCPU->sfrwrite)
+//            aCPU->sfrwrite(aCPU, address);
     aCPU->mPC += 2;
     return 0;
 }
 
 static int xrl_mem_imm(struct em8051 *aCPU)
 {
-    printf("XRL   %03Xh, #%03Xh\n",        
-        aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)],
-        aCPU->mCodeMem[(aCPU->mPC + 2)&(aCPU->mCodeMemSize-1)]);
+    int address = aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)];
+    if (address > 0x7f)
+    {
+        aCPU->mSFR[address - 0x80] ^= aCPU->mCodeMem[(aCPU->mPC + 2)&(aCPU->mCodeMemSize-1)];
+        if (aCPU->sfrwrite)
+            aCPU->sfrwrite(aCPU, address);
+    }
+    else
+    {
+        aCPU->mLowerData[address] ^= aCPU->mCodeMem[(aCPU->mPC + 2)&(aCPU->mCodeMemSize-1)];
+    }
     aCPU->mPC += 3;
     return 1;
 }
@@ -465,14 +640,44 @@ static int xrl_a_mem(struct em8051 *aCPU)
 {
     printf("XRL   A, %03Xh\n",
         aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+/*
+        int value;
+        if (aCPU->sfrread)
+            value = aCPU->sfrread(aCPU, address);
+        else
+            value = aCPU->mSFR[address - 0x80];
+
+*/
     aCPU->mPC += 2;
     return 0;
 }
 
 static int xrl_a_indir_rx(struct em8051 *aCPU)
 {
-    printf("XRL A, @R%d\n",        
-        aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)]&1);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 1) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int address = aCPU->mLowerData[rx];
+    if (address > 0x7f)
+    {
+        int value;
+        if (aCPU->mUpperData)
+        {
+            value = aCPU->mUpperData[address - 0x80];
+        }
+        else
+        {
+            if (aCPU->sfrread)
+                value = aCPU->sfrread(aCPU, address);
+            else
+                value = aCPU->mSFR[address - 0x80];
+        }
+
+        aCPU->mSFR[REG_ACC] ^= value;
+    }
+    else
+    {
+        aCPU->mSFR[REG_ACC] ^= aCPU->mLowerData[address];
+    }
     aCPU->mPC++;;
     return 0;
 }
@@ -518,6 +723,8 @@ static int mov_mem_imm(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80] = aCPU->mCodeMem[(aCPU->mPC + 2)&(aCPU->mCodeMemSize-1)];
+        if (aCPU->sfrwrite)
+            aCPU->sfrwrite(aCPU, address);
     }
     else
     {
@@ -530,9 +737,28 @@ static int mov_mem_imm(struct em8051 *aCPU)
 
 static int mov_indir_rx_imm(struct em8051 *aCPU)
 {
-    printf("MOV   @R%d, #%03Xh\n",        
-        aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)]&1,
-        aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 1) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int address = aCPU->mLowerData[rx];
+    int value = aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)];
+    if (address > 0x7f)
+    {
+        if (aCPU->mUpperData)
+        {
+            aCPU->mUpperData[address - 0x80] = value;
+        }
+        else
+        {
+            aCPU->mSFR[address - 0x80] = value;
+            if (aCPU->sfrwrite)
+                aCPU->sfrwrite(aCPU, address);
+        }
+    }
+    else
+    {
+        aCPU->mLowerData[address] = value;
+    }
+
     aCPU->mPC += 2;
     return 0;
 }
@@ -554,7 +780,8 @@ static int anl_c_bitaddr(struct em8051 *aCPU)
 
 static int movc_a_indir_a_pc(struct em8051 *aCPU)
 {
-    printf("MOVC  A, @A+PC");
+    int address = aCPU->mPC + 1 + aCPU->mSFR[REG_ACC];
+    aCPU->mSFR[REG_ACC] = aCPU->mCodeMem[address & (aCPU->mCodeMemSize - 1)];
     aCPU->mPC++;
     return 0;
 }
@@ -589,18 +816,32 @@ static int mov_mem_mem(struct em8051 *aCPU)
     {
         if (address2 > 0x7f)
         {
-            aCPU->mSFR[address1 - 0x80] = aCPU->mSFR[address2 - 0x80];
+            int value;
+            if (aCPU->sfrread)
+                value = aCPU->sfrread(aCPU, address2);
+            else
+                value = aCPU->mSFR[address2 - 0x80];
+            aCPU->mSFR[address1 - 0x80] = value;
+            if (aCPU->sfrwrite)
+                aCPU->sfrwrite(aCPU, address1);
         }
         else
         {
             aCPU->mSFR[address1 - 0x80] = aCPU->mLowerData[address2];
+            if (aCPU->sfrwrite)
+                aCPU->sfrwrite(aCPU, address1);
         }
     }
     else
     {
         if (address2 > 0x7f)
         {
-            aCPU->mLowerData[address1] = aCPU->mSFR[address2 - 0x80];
+            int value;
+            if (aCPU->sfrread)
+                value = aCPU->sfrread(aCPU, address2);
+            else
+                value = aCPU->mSFR[address2 - 0x80];
+            aCPU->mLowerData[address1] = value;
         }
         else
         {
@@ -617,6 +858,8 @@ static int mov_mem_indir_rx(struct em8051 *aCPU)
     printf("MOV   %03Xh, @R%d\n",        
         aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)],
         aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)]&1);
+//        if (aCPU->sfrwrite)
+//            aCPU->sfrwrite(aCPU, address);
     aCPU->mPC += 2;
     return 1;
 }
@@ -632,15 +875,35 @@ static int mov_dptr_imm(struct em8051 *aCPU)
 
 static int mov_bitaddr_c(struct em8051 *aCPU) 
 {
-    printf("MOV   %03Xh, C\n",
-        aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+    int address = aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)];
+    int carry = (aCPU->mSFR[REG_PSW] & PSWMASK_C)?1:0;
+    if (address > 0x7f)
+    {
+        // Data sheet does not explicitly say that the modification source
+        // is read from output latch, but we'll assume that is what happens.
+        int bit = address & 7;
+        int bitmask = (1 << bit);
+        address &= 0xf8;        
+        aCPU->mSFR[address - 0x80] = (aCPU->mSFR[address - 0x80] & ~bitmask) | (carry << bit);
+        if (aCPU->sfrwrite)
+            aCPU->sfrwrite(aCPU, address);
+    }
+    else
+    {
+        int bit = address & 7;
+        int bitmask = (1 << bit);
+        address >>= 3;
+        address += 0x20;
+        aCPU->mLowerData[address] = (aCPU->mLowerData[address] & ~bitmask) | (carry << bit);
+    }
     aCPU->mPC += 2;
     return 1;
 }
 
 static int movc_a_indir_a_dptr(struct em8051 *aCPU)
 {
-    printf("MOVC  A, @A+DPTR");
+    int address = (aCPU->mSFR[REG_DPH] << 8) | (aCPU->mSFR[REG_DPL] << 0) + aCPU->mSFR[REG_ACC];
+    aCPU->mSFR[REG_ACC] = aCPU->mCodeMem[address & (aCPU->mCodeMemSize - 1)];
     aCPU->mPC++;
     return 1;
 }
@@ -657,6 +920,15 @@ static int subb_a_mem(struct em8051 *aCPU)
 {
     printf("SUBB  A, %03Xh\n",
         aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+/*
+        int value;
+        if (aCPU->sfrread)
+            value = aCPU->sfrread(aCPU, address);
+        else
+            value = aCPU->mSFR[address - 0x80];
+
+*/
+
     aCPU->mPC += 2;
     return 0;
 }
@@ -679,8 +951,34 @@ static int orl_c_compl_bitaddr(struct em8051 *aCPU)
 
 static int mov_c_bitaddr(struct em8051 *aCPU) 
 {
-    printf("MOV   C, %03Xh\n",
-        aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+    int address = aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)];
+    int carry = (aCPU->mSFR[REG_PSW] & PSWMASK_C) ? 1 : 0;
+    if (address > 0x7f)
+    {
+        int bit = address & 7;
+        int bitmask = (1 << bit);
+        int value;
+        address &= 0xf8;        
+        if (aCPU->sfrread)
+            value = aCPU->sfrread(aCPU, address);
+        else
+            value = aCPU->mSFR[address - 0x80];
+
+        value = (value & bitmask) ? 1 : 0;
+
+        aCPU->mSFR[REG_PSW] = (aCPU->mSFR[REG_PSW] & ~PSWMASK_C) | (PSWMASK_C * value);
+    }
+    else
+    {
+        int bit = address & 7;
+        int bitmask = (1 << bit);
+        int value;
+        address >>= 3;
+        address += 0x20;
+        value = (aCPU->mLowerData[address] & bitmask) ? 1 : 0;
+        aCPU->mSFR[REG_PSW] = (aCPU->mSFR[REG_PSW] & ~PSWMASK_C) | (PSWMASK_C * value);
+    }
+
     aCPU->mPC += 2;
     return 0;
 }
@@ -713,6 +1011,14 @@ static int mov_indir_rx_mem(struct em8051 *aCPU)
     printf("MOV   @R%d, %03Xh\n",        
         aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)]&1,
         aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+/*
+        int value;
+        if (aCPU->sfrread)
+            value = aCPU->sfrread(aCPU, address);
+        else
+            value = aCPU->mSFR[address - 0x80];
+
+*/
     aCPU->mPC += 2;
     return 1;
 }
@@ -753,9 +1059,37 @@ static int cjne_a_imm_offset(struct em8051 *aCPU)
 
 static int cjne_a_mem_offset(struct em8051 *aCPU)
 {
-    printf("CJNE  A, %03Xh, #%d\n",
-        aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)],
-        (signed char)(aCPU->mCodeMem[(aCPU->mPC + 2)&(aCPU->mCodeMemSize-1)]));
+    int address = aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)];
+    int value;
+    if (address > 0x7f)
+    {
+        if (aCPU->sfrread)
+            value = aCPU->sfrread(aCPU, address);
+        else
+            value = aCPU->mSFR[address - 0x80];
+    }
+    else
+    {
+        value = aCPU->mLowerData[address];
+    }  
+
+    if (aCPU->mSFR[REG_ACC] < value)
+    {
+        aCPU->mSFR[REG_PSW] |= PSWMASK_C;
+    }
+    else
+    {
+        aCPU->mSFR[REG_PSW] &= ~PSWMASK_C;
+    }
+
+    if (aCPU->mSFR[REG_ACC] != value)
+    {
+        aCPU->mPC += (signed char)aCPU->mCodeMem[(aCPU->mPC + 2)&(aCPU->mCodeMemSize-1)] + 3;
+    }
+    else
+    {
+        aCPU->mPC += 3;
+    }
     return 1;
 }
 static int cjne_indir_rx_imm_offset(struct em8051 *aCPU)
@@ -769,8 +1103,27 @@ static int cjne_indir_rx_imm_offset(struct em8051 *aCPU)
 
 static int push_mem(struct em8051 *aCPU)
 {
-    printf("PUSH  %03Xh\n",
-        aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+    int address = aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)];
+    if (address > 0x7f)
+    {
+        int value;
+        if (aCPU->sfrread)
+            value = aCPU->sfrread(aCPU, address);
+        else
+            value = aCPU->mSFR[address - 0x80];
+        aCPU->mSFR[REG_SP]++;
+        aCPU->mLowerData[aCPU->mSFR[REG_SP] & 0x7f] = value;
+    }
+    else
+    {
+        aCPU->mSFR[REG_SP]++;
+        aCPU->mLowerData[aCPU->mSFR[REG_SP] & 0x7f] = aCPU->mLowerData[address];
+    }
+
+    if (aCPU->mSFR[REG_SP] >= 0x80)
+        if (aCPU->except)
+            aCPU->except(aCPU, EXCEPTION_STACK);
+   
     aCPU->mPC += 2;
     return 1;
 }
@@ -778,8 +1131,26 @@ static int push_mem(struct em8051 *aCPU)
 
 static int clr_bitaddr(struct em8051 *aCPU)
 {
-    printf("CLR   %03Xh\n",
-        aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+    int address = aCPU->mCodeMem[(aCPU->mPC + 1) & (aCPU->mCodeMemSize - 1)];
+    if (address > 0x7f)
+    {
+        // Data sheet does not explicitly say that the modification source
+        // is read from output latch, but we'll assume that is what happens.
+        int bit = address & 7;
+        int bitmask = (1 << bit);
+        address &= 0xf8;        
+        aCPU->mSFR[address - 0x80] &= ~bitmask;
+        if (aCPU->sfrwrite)
+            aCPU->sfrwrite(aCPU, address);
+    }
+    else
+    {
+        int bit = address & 7;
+        int bitmask = (1 << bit);
+        address >>= 3;
+        address += 0x20;
+        aCPU->mLowerData[address] &= ~bitmask;
+    }
     aCPU->mPC += 2;
     return 0;
 }
@@ -802,6 +1173,16 @@ static int xch_a_mem(struct em8051 *aCPU)
 {
     printf("XCH   A, %03Xh\n",
         aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+//        if (aCPU->sfrwrite)
+//            aCPU->sfrwrite(aCPU, address);
+/*
+        int value;
+        if (aCPU->sfrread)
+            value = aCPU->sfrread(aCPU, address);
+        else
+            value = aCPU->mSFR[address - 0x80];
+
+*/
     aCPU->mPC += 2;
     return 0;
 }
@@ -817,16 +1198,50 @@ static int xch_a_indir_rx(struct em8051 *aCPU)
 
 static int pop_mem(struct em8051 *aCPU)
 {
-    printf("POP   %03Xh\n",
-        aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+    int address = aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)];
+    if (address > 0x7f)
+    {
+        aCPU->mSFR[address - 0x80] = aCPU->mLowerData[aCPU->mSFR[REG_SP] & 0x7f];
+        aCPU->mSFR[REG_SP]--;
+        if (aCPU->sfrwrite)
+            aCPU->sfrwrite(aCPU, address);
+    }
+    else
+    {
+        aCPU->mLowerData[address] = aCPU->mLowerData[aCPU->mSFR[REG_SP] & 0x7f];
+        aCPU->mSFR[REG_SP]--;
+    }
+
+    if (aCPU->mSFR[REG_SP] >= 0x80)
+        if (aCPU->except)
+            aCPU->except(aCPU, EXCEPTION_STACK);
+
     aCPU->mPC += 2;
     return 1;
 }
 
 static int setb_bitaddr(struct em8051 *aCPU)
 {
-    printf("SETB  %03Xh\n",
-        aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)]);
+    int address = aCPU->mCodeMem[(aCPU->mPC + 1) & (aCPU->mCodeMemSize - 1)];
+    if (address > 0x7f)
+    {
+        // Data sheet does not explicitly say that the modification source
+        // is read from output latch, but we'll assume that is what happens.
+        int bit = address & 7;
+        int bitmask = (1 << bit);
+        address &= 0xf8;        
+        aCPU->mSFR[address - 0x80] |= bitmask;
+        if (aCPU->sfrwrite)
+            aCPU->sfrwrite(aCPU, address);
+    }
+    else
+    {
+        int bit = address & 7;
+        int bitmask = (1 << bit);
+        address >>= 3;
+        address += 0x20;
+        aCPU->mLowerData[address] |= bitmask;
+    }
     aCPU->mPC += 2;
     return 0;
 }
@@ -840,7 +1255,31 @@ static int setb_c(struct em8051 *aCPU)
 
 static int da_a(struct em8051 *aCPU)
 {
-    printf("DA    A");
+    // data sheets for this operation are a bit unclear..
+    // - should AC (or C) ever be cleared?
+    // - should this be done in two steps?
+
+    int result = aCPU->mSFR[REG_ACC];
+    if ((result & 0xf) > 9 || (aCPU->mSFR[REG_PSW] & PSWMASK_AC))
+        result += 0x6;
+    if ((result & 0xff0) > 0x90 || (aCPU->mSFR[REG_PSW] & PSWMASK_C))
+        result += 0x60;
+    if (result > 0x99)
+        aCPU->mSFR[REG_PSW] |= PSWMASK_C;
+    aCPU->mSFR[REG_ACC] = result;
+
+ /*
+    // this is basically what intel datasheet says the op should do..
+    int adder = 0;
+    if (aCPU->mSFR[REG_ACC] & 0xf > 9 || aCPU->mSFR[REG_PSW] & PSWMASK_AC)
+        adder = 6;
+    if (aCPU->mSFR[REG_ACC] & 0xf0 > 0x90 || aCPU->mSFR[REG_PSW] & PSWMASK_C)
+        adder |= 0x60;
+    adder += aCPU[REG_ACC];
+    if (adder > 0x99)
+        aCPU->mSFR[REG_PSW] |= PSWMASK_C;
+    aCPU[REG_ACC] = adder;
+*/
     aCPU->mPC++;
     return 0;
 }
@@ -850,6 +1289,8 @@ static int djnz_mem_offset(struct em8051 *aCPU)
     printf("DJNZ  %03Xh, #%d\n",        
         aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)],
         (signed char)(aCPU->mCodeMem[(aCPU->mPC + 2)&(aCPU->mCodeMemSize-1)]));
+//        if (aCPU->sfrwrite)
+//            aCPU->sfrwrite(aCPU, address);
     return 1;
 }
 
@@ -873,8 +1314,11 @@ static int movx_a_indir_dptr(struct em8051 *aCPU)
 
 static int movx_a_indir_rx(struct em8051 *aCPU)
 {
-    printf("MOVX  A, @R%d\n",        
-        aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)]&1);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 1) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int address = aCPU->mLowerData[rx];
+    aCPU->mSFR[REG_ACC] = aCPU->mExtData[address];
+
     aCPU->mPC++;
     return 1;
 }
@@ -888,10 +1332,19 @@ static int clr_a(struct em8051 *aCPU)
 
 static int mov_a_mem(struct em8051 *aCPU)
 {
+    // mov a,acc is not a valid instruction
     int address = aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)];
     if (address > 0x7f)
     {
-        aCPU->mSFR[REG_ACC] = aCPU->mSFR[address - 0x80];
+        int value;
+        if (aCPU->sfrread)
+            value = aCPU->sfrread(aCPU, address);
+        else
+            value = aCPU->mSFR[address - 0x80];
+        aCPU->mSFR[REG_ACC] = value;
+        if (REG_ACC == address - 0x80)
+            if (aCPU->except)
+                aCPU->except(aCPU, EXCEPTION_ACC_TO_A);
     }
     else
     {
@@ -904,8 +1357,31 @@ static int mov_a_mem(struct em8051 *aCPU)
 
 static int mov_a_indir_rx(struct em8051 *aCPU)
 {
-    printf("MOV   A, @R%d\n",        
-        aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)]&1);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 1) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int address = aCPU->mLowerData[rx];
+    if (address > 0x7f)
+    {
+        int value;
+        if (aCPU->mUpperData)
+        {
+            value = aCPU->mUpperData[address - 0x80];
+        }
+        else
+        {
+            if (aCPU->sfrread)
+                value = aCPU->sfrread(aCPU, address);
+            else
+                value = aCPU->mSFR[address - 0x80];
+        }
+
+        aCPU->mSFR[REG_ACC] = value;
+    }
+    else
+    {
+        aCPU->mSFR[REG_ACC] = aCPU->mLowerData[address];
+    }
+
     aCPU->mPC++;
     return 0;
 }
@@ -922,8 +1398,10 @@ static int movx_indir_dptr_a(struct em8051 *aCPU)
 
 static int movx_indir_rx_a(struct em8051 *aCPU)
 {
-    printf("MOVX  @R%d, A\n",        
-        aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)]&1);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 1) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int address = aCPU->mLowerData[rx];
+    aCPU->mExtData[address] = aCPU->mSFR[REG_ACC];
     aCPU->mPC++;
     return 1;
 }
@@ -941,6 +1419,8 @@ static int mov_mem_a(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80] = aCPU->mSFR[REG_ACC];
+        if (aCPU->sfrwrite)
+            aCPU->sfrwrite(aCPU, address);
     }
     else
     {
@@ -973,6 +1453,9 @@ static int mov_indir_rx_a(struct em8051 *aCPU)
 
 static int nop(struct em8051 *aCPU)
 {
+    if (aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemSize - 1)] != 0)
+        if (aCPU->except)
+            aCPU->except(aCPU, EXCEPTION_ILLEGAL_OPCODE);
     aCPU->mPC++;
     return 0;
 }
@@ -988,42 +1471,57 @@ static int inc_rx(struct em8051 *aCPU)
 
 static int dec_rx(struct em8051 *aCPU)
 {
-    printf("DEC   R%d\n",aCPU->mCodeMem[aCPU->mPC&(aCPU->mCodeMemSize-1)]&7);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 7) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    aCPU->mLowerData[rx]--;
     aCPU->mPC++;
     return 0;
 }
 
 static int add_a_rx(struct em8051 *aCPU)
 {
-    printf("ADD   A, R%d\n",aCPU->mCodeMem[aCPU->mPC&(aCPU->mCodeMemSize-1)]&7);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 7) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    add_solve_flags(aCPU, aCPU->mLowerData[rx], aCPU->mSFR[REG_ACC]);
+    aCPU->mSFR[REG_ACC] += aCPU->mLowerData[rx];
     aCPU->mPC++;
     return 0;
 }
 
 static int addc_a_rx(struct em8051 *aCPU)
 {
-    printf("ADDC  A, R%d\n",aCPU->mCodeMem[aCPU->mPC&(aCPU->mCodeMemSize-1)]&7);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 7) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int carry = (aCPU->mSFR[REG_PSW] & PSWMASK_C) ? 1 : 0;
+    add_solve_flags(aCPU, aCPU->mLowerData[rx] + carry, aCPU->mSFR[REG_ACC]);
+    aCPU->mSFR[REG_ACC] += aCPU->mLowerData[rx] + carry;
     aCPU->mPC++;
     return 0;
 }
 
 static int orl_a_rx(struct em8051 *aCPU)
 {
-    printf("ORL   A, R%d\n",aCPU->mCodeMem[aCPU->mPC&(aCPU->mCodeMemSize-1)]&7);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 7) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    aCPU->mSFR[REG_ACC] |= aCPU->mLowerData[rx];
     aCPU->mPC++;
     return 0;
 }
 
 static int anl_a_rx(struct em8051 *aCPU)
 {
-    printf("ANL   A, R%d\n",aCPU->mCodeMem[aCPU->mPC&(aCPU->mCodeMemSize-1)]&7);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 7) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    aCPU->mSFR[REG_ACC] &= aCPU->mLowerData[rx];
     aCPU->mPC++;
     return 0;
 }
 
 static int xrl_a_rx(struct em8051 *aCPU)
 {
-    printf("XRL   A, R%d\n",aCPU->mCodeMem[aCPU->mPC&(aCPU->mCodeMemSize-1)]&7);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 7) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    aCPU->mSFR[REG_ACC] ^= aCPU->mLowerData[rx];    
     aCPU->mPC++;
     return 0;
 }
@@ -1046,6 +1544,8 @@ static int mov_mem_rx(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80] = aCPU->mLowerData[rx];
+        if (aCPU->sfrwrite)
+            aCPU->sfrwrite(aCPU, address);
     }
     else
     {
@@ -1057,7 +1557,11 @@ static int mov_mem_rx(struct em8051 *aCPU)
 
 static int subb_a_rx(struct em8051 *aCPU)
 {
-    printf("SUBB  A, R%d\n",aCPU->mCodeMem[aCPU->mPC&(aCPU->mCodeMemSize-1)]&7);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 7) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int carry = (aCPU->mSFR[REG_PSW] & PSWMASK_C) ? 1 : 0;
+    sub_solve_flags(aCPU, aCPU->mSFR[REG_ACC], aCPU->mLowerData[rx] + carry);
+    aCPU->mSFR[REG_ACC] -= aCPU->mLowerData[rx] + carry;
     aCPU->mPC++;
     return 0;
 }
@@ -1069,7 +1573,12 @@ static int mov_rx_mem(struct em8051 *aCPU)
     int address = aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)];
     if (address > 0x7f)
     {
-        aCPU->mLowerData[rx] = aCPU->mSFR[address - 0x80];
+        int value;
+        if (aCPU->sfrread)
+            value = aCPU->sfrread(aCPU, address);
+        else
+            value = aCPU->mSFR[address - 0x80];
+        aCPU->mLowerData[rx] = value;
     }
     else
     {
@@ -1082,16 +1591,37 @@ static int mov_rx_mem(struct em8051 *aCPU)
 
 static int cjne_rx_imm_offset(struct em8051 *aCPU)
 {
-    printf("CJNE  R%d, #%03Xh, #%d\n",
-        aCPU->mCodeMem[aCPU->mPC&(aCPU->mCodeMemSize-1)]&7,
-        aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)],
-        (signed char)aCPU->mCodeMem[(aCPU->mPC + 2)&(aCPU->mCodeMemSize-1)]);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 7) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int value = aCPU->mCodeMem[(aCPU->mPC + 1)&(aCPU->mCodeMemSize-1)];
+    
+    if (aCPU->mLowerData[rx] < value)
+    {
+        aCPU->mSFR[REG_PSW] |= PSWMASK_C;
+    }
+    else
+    {
+        aCPU->mSFR[REG_PSW] &= ~PSWMASK_C;
+    }
+
+    if (aCPU->mLowerData[rx] != value)
+    {
+        aCPU->mPC += (signed char)aCPU->mCodeMem[(aCPU->mPC + 2)&(aCPU->mCodeMemSize-1)] + 3;
+    }
+    else
+    {
+        aCPU->mPC += 3;
+    }
     return 1;
 }
 
 static int xch_a_rx(struct em8051 *aCPU)
 {
-    printf("XCH   A, R%d\n",aCPU->mCodeMem[aCPU->mPC&(aCPU->mCodeMemSize-1)]&7);
+    int rx = (aCPU->mCodeMem[(aCPU->mPC)&(aCPU->mCodeMemSize-1)] & 7) + 
+             8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int a = aCPU->mSFR[REG_ACC];
+    aCPU->mSFR[REG_ACC] = aCPU->mLowerData[rx];
+    aCPU->mLowerData[rx] = a;
     aCPU->mPC++;
     return 0;
 }

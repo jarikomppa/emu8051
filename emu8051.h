@@ -1,11 +1,23 @@
 struct em8051;
 
 // Operation: returns number of ticks the operation should take
-typedef int (*operation)(struct em8051 *aCPU); 
+typedef int (*em8051operation)(struct em8051 *aCPU); 
 
 // Decodes opcode at position, and fills the buffer with the assembler code. 
 // Returns how many bytes the opcode takes.
-typedef int (*decoder)(struct em8051 *aCPU, int aPosition, char *aBuffer);
+typedef int (*em8051decoder)(struct em8051 *aCPU, int aPosition, char *aBuffer);
+
+// Callback: some exceptional situation occurred. See EM8051_EXCEPTION enum, below
+typedef void (*em8051exception)(struct em8051 *aCPU, int aCode);
+
+// Callback: an SFR register is about to be read (not called for 'a' ops nor psw changes)
+// Default is to return the value in the SFR register. Ports may act differently.
+typedef int (*em8051sfrread)(struct em8051 *aCPU, int aRegister);
+
+// Callback: an SFR register has changed (not called for 'a' ops)
+// Default is to do nothing
+typedef void (*em8051sfrwrite)(struct em8051 *aCPU, int aRegister);
+
 
 struct em8051
 {
@@ -18,8 +30,11 @@ struct em8051
     unsigned char *mSFR; // 128 bytes; (special function registers)
     int mPC; // Program Counter; outside memory area
     int mTickDelay; // How many ticks should we delay before continuing
-    operation op[256]; // function pointers to opcode handlers
-    decoder dec[256]; // opcode-to-string decoder handlers    
+    em8051operation op[256]; // function pointers to opcode handlers
+    em8051decoder dec[256]; // opcode-to-string decoder handlers    
+    em8051exception except; // callback: exceptional situation occurred
+    em8051sfrread sfrread; // callback: SFR register being read
+    em8051sfrwrite sfrwrite; // callback: SFR register written
 };
 
 // set the emulator into reset state. Must be called before tick(), as
@@ -84,3 +99,11 @@ enum PSW_MASKS
     PSWMASK_C = 0x80
 };
 
+enum EM8051_EXCEPTION
+{
+    EXCEPTION_STACK,  // stack address > 127
+    EXCEPTION_ACC_TO_A, // acc-to-a move operation; illegal (acc-to-acc is ok, a-to-acc is ok..)
+    EXCEPTION_IRET_PSW_MISMATCH, // psw not preserved over interrupt call (doesn't care about P, F0 or UNUSED)
+    EXCEPTION_IRET_SP_MISMATCH,  // sp not preserved over interrupt call
+    EXCEPTION_ILLEGAL_OPCODE     // for the single 'reserved' opcode in the architecture
+};
