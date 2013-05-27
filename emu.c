@@ -6,33 +6,69 @@
  * Curses-based emulator front-end
  */
 
+/*
+short term TODO:
+- input ports
+- G)oto address
+- update help
+
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "curses.h"
 #include "emu8051.h"
 
+// how many lines of history to remember
 #define HISTORY_LINES 20
 
+// code box (PC, opcode, assembly)
 WINDOW *codebox = NULL, *codeoutput = NULL;
 char *codelines[HISTORY_LINES];
+
+// Registers box (a, r0..7, b, dptr)
 WINDOW *regbox = NULL, *regoutput = NULL;
 char *reglines[HISTORY_LINES];
+
+// RAM view/edit box
 WINDOW *rambox = NULL, *ramview = NULL;
+
+// stack view
 WINDOW *stackbox = NULL, *stackview = NULL;
+
+// program status word box
 WINDOW *pswbox = NULL, *pswoutput = NULL;
 char *pswlines[HISTORY_LINES];
+
+// IO registers box
 WINDOW *ioregbox = NULL, *ioregoutput = NULL;
 char *ioreglines[HISTORY_LINES];
+
+// special registers box
 WINDOW *spregbox = NULL, *spregoutput = NULL;
 char *spreglines[HISTORY_LINES];
+
+// misc. stuff box
 WINDOW *miscbox = NULL, *miscview = NULL;
 
+// store the object filename
+char filename[256];
+
+// current line in the history cyclic buffers
 int historyline = 0;
+// last known columns and rows; for screen resize detection
 int oldcols, oldrows;
+// are we in single-step or run mode
 int runmode = 0;
+// current run speed, lower is faster
 int speed = 6;
+// focused component
 int focus = 0;
+// memory window cursor position
+int memcursorpos = 0;
+// memory window offset
+int memoffset = 0;
 
 
 void setspeed(int speed, int runmode)
@@ -154,7 +190,7 @@ void build_main_view()
     rambox = subwin(stdscr, 10, 31, 0, 0);
     box(rambox,0,0);
     mvwaddstr(rambox, 0, 2, "RAM");
-    ramview = subwin(rambox, 8, 28, 1, 2);
+    ramview = subwin(rambox, 8, 29, 1, 1);
 
     stackbox = subwin(stdscr, 16, 6, 0, 31);
     box(stackbox,0,0);
@@ -248,8 +284,10 @@ void emu_exception(struct em8051 *aCPU, int aCode)
     default:
         waddstr(exc,"Unknown exception"); 
     }
-    wmove(exc, 5, 12);
+    wmove(exc, 6, 12);
+    wattron(exc,A_REVERSE);
     waddstr(exc, "Press any key to continue");
+    wattroff(exc,A_REVERSE);
 
     wrefresh(exc);
 
@@ -262,11 +300,10 @@ void emu_exception(struct em8051 *aCPU, int aCode)
 void emu_load(struct em8051 *aCPU)
 {
     WINDOW * exc;
-    char temp[256];
     int pos = 0;
     int ch = 0;
     int result;
-    temp[0] = 0;
+    pos = (int)strlen(filename);
 
     runmode = 0;
     setspeed(speed, runmode);
@@ -280,6 +317,7 @@ void emu_load(struct em8051 *aCPU)
     //            12345678901234567890123456780123456789012345
     waddstr(exc,"[____________________________________________]"); 
     wmove(exc,2,3);
+    waddstr(exc, filename);
     wrefresh(exc);
 
     while (ch != '\n')
@@ -289,9 +327,9 @@ void emu_load(struct em8051 *aCPU)
         {
             if (pos < 44)
             {
-                temp[pos] = ch;
+                filename[pos] = ch;
                 pos++;
-                temp[pos] = 0;
+                filename[pos] = 0;
                 waddch(exc,ch);
                 wrefresh(exc);
             }
@@ -301,7 +339,7 @@ void emu_load(struct em8051 *aCPU)
             if (pos > 0)
             {
                 pos--;
-                temp[pos] = 0;
+                filename[pos] = 0;
                 wmove(exc,2,3+pos);
                 waddch(exc,'_');
                 wmove(exc,2,3+pos);
@@ -310,7 +348,7 @@ void emu_load(struct em8051 *aCPU)
         }
     }
 
-    result = load_obj(aCPU, temp);
+    result = load_obj(aCPU, filename);
     wmove(exc, 1, 12);
     switch (result)
     {
@@ -333,8 +371,10 @@ void emu_load(struct em8051 *aCPU)
         waddstr(exc,"No end of data marker found.");
         break;
     }
-    wmove(exc, 3, 12);
+    wmove(exc, 4, 12);
+    wattron(exc,A_REVERSE);
     waddstr(exc, "Press any key to continue");
+    wattroff(exc,A_REVERSE);
     wrefresh(exc);
 
     getch();
@@ -396,6 +436,12 @@ int emu_reset(struct em8051 *aCPU)
     return result;
 }
 
+
+int emu_sfrread(struct em8051 *aCPU, int aRegister)
+{
+    return aCPU->mSFR[aRegister - 0x80];
+}
+
 void emu_help()
 {
     WINDOW * exc;
@@ -418,8 +464,10 @@ void emu_help()
     waddstr(exc, "8051 Emulator v. 0.1");
     wmove(exc, 3, 2);
     waddstr(exc, "Copyright (c) 2006 Jari Komppa");
-    wmove(exc, 5, 17);
+    wmove(exc, 6, 17);
+    wattron(exc,A_REVERSE);
     waddstr(exc, "Press any key to continue");
+    wattroff(exc,A_REVERSE);
     wrefresh(exc);
 
     ch = getch();
@@ -427,6 +475,144 @@ void emu_help()
     delwin(exc);
     wipe_main_view();
     build_main_view();
+}
+
+
+void editor_keys(struct em8051 *aCPU, int ch)
+{
+    int insert_value = -1;
+    int maxmem;
+    switch(ch)
+    {
+    case KEY_RIGHT:
+        memcursorpos++;
+        break;
+    case KEY_LEFT:
+        memcursorpos--;
+        break;
+    case KEY_UP:
+        memcursorpos-=16;
+        break;
+    case KEY_DOWN:
+        memcursorpos+=16;
+        break;
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+        insert_value = ch - '0';
+        break;
+    case 'a':
+    case 'A':
+        insert_value = 0xa;
+        break;
+    case 'b':
+    case 'B':
+        insert_value = 0xb;
+        break;
+    case 'c':
+    case 'C':
+        insert_value = 0xc;
+        break;
+    case 'd':
+    case 'D':
+        insert_value = 0xd;
+        break;
+    case 'e':
+    case 'E':
+        insert_value = 0xe;
+        break;
+    case 'f':
+    case 'F':
+        insert_value = 0xf;
+        break;
+    }
+
+    switch (focus)
+    {
+    case 0:
+    case 1:
+    case 2:
+        maxmem = 128;
+        break;
+    case 3:
+        maxmem = aCPU->mExtDataSize;
+        break;
+    case 4:
+        maxmem = aCPU->mCodeMemSize;
+        break;
+    }
+
+    if (insert_value != -1)
+    {
+        switch (focus)
+        {
+        case 0:
+            if (memcursorpos & 1)
+                aCPU->mLowerData[memoffset + (memcursorpos / 2)] = (aCPU->mLowerData[memoffset + (memcursorpos / 2)] & 0xf0) | insert_value;
+            else
+                aCPU->mLowerData[memoffset + (memcursorpos / 2)] = (aCPU->mLowerData[memoffset + (memcursorpos / 2)] & 0x0f) | (insert_value << 4);
+            break;
+        case 1:
+            if (memcursorpos & 1)
+                aCPU->mUpperData[memoffset + (memcursorpos / 2)] = (aCPU->mUpperData[memoffset + (memcursorpos / 2)] & 0xf0) | insert_value;
+            else
+                aCPU->mUpperData[memoffset + (memcursorpos / 2)] = (aCPU->mUpperData[memoffset + (memcursorpos / 2)] & 0x0f) | (insert_value << 4);
+            break;
+        case 2:
+            if (memcursorpos & 1)
+                aCPU->mSFR[memoffset + (memcursorpos / 2)] = (aCPU->mSFR[memoffset + (memcursorpos / 2)] & 0xf0) | insert_value;
+            else
+                aCPU->mSFR[memoffset + (memcursorpos / 2)] = (aCPU->mSFR[memoffset + (memcursorpos / 2)] & 0x0f) | (insert_value << 4);
+            break;
+        case 3:
+            if (memcursorpos & 1)
+                aCPU->mExtData[memoffset + (memcursorpos / 2)] = (aCPU->mExtData[memoffset + (memcursorpos / 2)] & 0xf0) | insert_value;
+            else
+                aCPU->mExtData[memoffset + (memcursorpos / 2)] = (aCPU->mExtData[memoffset + (memcursorpos / 2)] & 0x0f) | (insert_value << 4);
+            break;
+        case 4:
+            if (memcursorpos & 1)
+                aCPU->mCodeMem[memoffset + (memcursorpos / 2)] = (aCPU->mCodeMem[memoffset + (memcursorpos / 2)] & 0xf0) | insert_value;
+            else
+                aCPU->mCodeMem[memoffset + (memcursorpos / 2)] = (aCPU->mCodeMem[memoffset + (memcursorpos / 2)] & 0x0f) | (insert_value << 4);
+            break;
+        }
+        memcursorpos++;
+    }
+
+    if (memcursorpos < 0)
+    {
+        memoffset -= 8;
+        if (memoffset < 0)
+        {
+            memoffset = 0;
+            memcursorpos = 0;
+        }
+        else
+        {
+            memcursorpos += 16;
+        }
+    }
+    if (memcursorpos > 128 - 1)
+    {
+        memoffset += 8;
+        if (memoffset > (maxmem - 8*8))
+        {
+            memoffset = (maxmem - 8*8);
+            memcursorpos = 128 - 1;
+        }
+        else
+        {
+            memcursorpos -= 16;
+        }
+    }
 }
 
 
@@ -457,14 +643,21 @@ int main(int parc, char ** pars)
     emu.mUpperData   = malloc(128);
     emu.mSFR         = malloc(128);
     emu.except       = &emu_exception;
+    emu.sfrread      = &emu_sfrread;
     reset(&emu, 1);
     i = 0x100;
 
     if (parc > 1)
-    if (load_obj(&emu, pars[1]) != 0)
     {
-        printf("File '%s' load failure\n\n",pars[1]);
-        return -1;
+        if (load_obj(&emu, pars[1]) != 0)
+        {
+            printf("File '%s' load failure\n\n",pars[1]);
+            return -1;
+        }
+        else
+        {
+            strcpy(filename, pars[1]);
+        }
     }
 
     /*  Initialize ncurses  */
@@ -484,8 +677,6 @@ int main(int parc, char ** pars)
 
     build_main_view();
 
-
-
     /*  Loop until user hits 'shift-Q' to quit  */
 
     do
@@ -498,6 +689,17 @@ int main(int parc, char ** pars)
         }
         switch (ch)
         {
+        case '\t':
+            memcursorpos = 0;
+            memoffset = 0;
+            focus++;
+            if (focus == 1 && emu.mUpperData == NULL) 
+                focus++;
+            if (focus == 3 && emu.mExtDataSize == 0)
+                focus++;
+            if (focus == 5)
+                focus = 0;
+            break;
         case 'h':
             emu_help();
             break;
@@ -542,6 +744,10 @@ int main(int parc, char ** pars)
                 speed = 7;
             setspeed(speed, runmode);
             break;
+        case KEY_LEFT:
+        case KEY_RIGHT:
+        case KEY_DOWN:
+        case KEY_UP:
         case '1':
         case '2':
         case '3':
@@ -560,6 +766,11 @@ int main(int parc, char ** pars)
         case 'C':
         case 'd':
         case 'D':
+        case 'e':
+        case 'E':
+        case 'f':
+        case 'F':
+            editor_keys(&emu, ch);
             break;
         case KEY_F(1):
             emu.mSFR[REG_P1] = 1;
@@ -616,14 +827,6 @@ int main(int parc, char ** pars)
                         j += sprintf(temp + j,"   ");
                     sprintf(temp + j," %s",assembly);
                     wprintw(codeoutput," %s",temp);
-                    /*
-                    wprintw(codeoutput,"\n%04X  ", old_pc & 0xffff);
-                    for (m = 0; m < l; m++)
-                        wprintw(codeoutput,"%02X ", emu.mCodeMem[old_pc+m]);
-                    for (m = l; m < 3; m++)
-                        wprintw(codeoutput,"   ");
-                    wprintw(codeoutput," %s",temp);
-                    */
                     free(codelines[historyline]);
                     codelines[historyline] = strdup(temp);
 
@@ -685,10 +888,6 @@ int main(int parc, char ** pars)
                 }
             }
 
-            werase(miscview);
-            wprintw(miscview, "Cycles: %9d\nTime  : %9.3fms (@12MHz)", clocks, 1000.0f * clocks * (1.0f/(12.0f*1000*1000)));
-            wrefresh(miscview);
-
             if (speed != 0)
             {
                 wrefresh(codeoutput);
@@ -699,21 +898,147 @@ int main(int parc, char ** pars)
             }
         }
 
+        werase(miscview);
+        wprintw(miscview, "Cycles: %9d\n", clocks);
+        wprintw(miscview, "Time  : %9.3fms (@12MHz)\n", 1000.0f * clocks * (1.0f/(12.0f*1000*1000)));
+
         werase(ramview);
-        for (i = 0; i < 8; i++)
+        if (focus == 0)
         {
-            wprintw(ramview,"%02X  %02X %02X %02X %02X %02X %02X %02X %02X\n", 
-                i*8, 
-                emu.mLowerData[i*8+0], emu.mLowerData[i*8+1], emu.mLowerData[i*8+2], emu.mLowerData[i*8+3],
-                emu.mLowerData[i*8+4], emu.mLowerData[i*8+5], emu.mLowerData[i*8+6], emu.mLowerData[i*8+7]);
+            int bytevalue;
+            for (i = 0; i < 8; i++)
+            {
+                wprintw(ramview,"%04X %02X %02X %02X %02X %02X %02X %02X %02X\n", 
+                    i*8+memoffset, 
+                    emu.mLowerData[i*8+0+memoffset], emu.mLowerData[i*8+1+memoffset], emu.mLowerData[i*8+2+memoffset], emu.mLowerData[i*8+3+memoffset],
+                    emu.mLowerData[i*8+4+memoffset], emu.mLowerData[i*8+5+memoffset], emu.mLowerData[i*8+6+memoffset], emu.mLowerData[i*8+7+memoffset]);
+            }
+
+            bytevalue = emu.mLowerData[memcursorpos / 2 + memoffset];
+            wattron(ramview, A_REVERSE);
+            wmove(ramview, memcursorpos / 16, 5 + ((memcursorpos % 16) / 2) * 3 + (memcursorpos & 1));
+            wprintw(ramview,"%X", (bytevalue >> (4 * (!(memcursorpos & 1)))) & 0xf);
+            wattroff(ramview, A_REVERSE);
+            wprintw(miscview, "low %04X: %d %d %d %d %d %d %d %d", 
+                    memcursorpos / 2 + memoffset,
+                    (bytevalue >> 7) & 1,
+                    (bytevalue >> 6) & 1,
+                    (bytevalue >> 5) & 1,
+                    (bytevalue >> 4) & 1,
+                    (bytevalue >> 3) & 1,
+                    (bytevalue >> 2) & 1,
+                    (bytevalue >> 1) & 1,
+                    (bytevalue >> 0) & 1);
         }
-/*
-        wattron(ramview, A_REVERSE);
-        wmove(ramview,5,5);
-        wprintw(ramview,"huuhaa");
-        wattroff(ramview, A_REVERSE);
-*/
-        werase(stackview);
+        if (focus == 1)
+        {
+            int bytevalue;
+            for (i = 0; i < 8; i++)
+            {
+                wprintw(ramview,"%04X %02X %02X %02X %02X %02X %02X %02X %02X\n", 
+                    i*8+memoffset+0x80, 
+                    emu.mUpperData[i*8+0+memoffset], emu.mUpperData[i*8+1+memoffset], emu.mUpperData[i*8+2+memoffset], emu.mUpperData[i*8+3+memoffset],
+                    emu.mUpperData[i*8+4+memoffset], emu.mUpperData[i*8+5+memoffset], emu.mUpperData[i*8+6+memoffset], emu.mUpperData[i*8+7+memoffset]);
+            }
+
+            bytevalue = emu.mUpperData[memcursorpos / 2 + memoffset];
+            wattron(ramview, A_REVERSE);
+            wmove(ramview, memcursorpos / 16, 5 + ((memcursorpos % 16) / 2) * 3 + (memcursorpos & 1));
+            wprintw(ramview,"%X", (bytevalue >> (4 * (!(memcursorpos & 1)))) & 0xf);
+            wattroff(ramview, A_REVERSE);
+            wprintw(miscview, "upr %04X: %d %d %d %d %d %d %d %d", 
+                    memcursorpos / 2 + memoffset + 0x80,
+                    (bytevalue >> 7) & 1,
+                    (bytevalue >> 6) & 1,
+                    (bytevalue >> 5) & 1,
+                    (bytevalue >> 4) & 1,
+                    (bytevalue >> 3) & 1,
+                    (bytevalue >> 2) & 1,
+                    (bytevalue >> 1) & 1,
+                    (bytevalue >> 0) & 1);
+        }
+        if (focus == 2)
+        {
+            int bytevalue;
+            for (i = 0; i < 8; i++)
+            {
+                wprintw(ramview,"%04X %02X %02X %02X %02X %02X %02X %02X %02X\n", 
+                    i*8+memoffset+0x80, 
+                    emu.mSFR[i*8+0+memoffset], emu.mSFR[i*8+1+memoffset], emu.mSFR[i*8+2+memoffset], emu.mSFR[i*8+3+memoffset],
+                    emu.mSFR[i*8+4+memoffset], emu.mSFR[i*8+5+memoffset], emu.mSFR[i*8+6+memoffset], emu.mSFR[i*8+7+memoffset]);
+            }
+
+            bytevalue = emu.mSFR[memcursorpos / 2 + memoffset];
+            wattron(ramview, A_REVERSE);
+            wmove(ramview, memcursorpos / 16, 5 + ((memcursorpos % 16) / 2) * 3 + (memcursorpos & 1));
+            wprintw(ramview,"%X", (bytevalue >> (4 * (!(memcursorpos & 1)))) & 0xf);
+            wattroff(ramview, A_REVERSE);
+            wprintw(miscview, "SFR %04X: %d %d %d %d %d %d %d %d", 
+                    memcursorpos / 2 + memoffset + 0x80,
+                    (bytevalue >> 7) & 1,
+                    (bytevalue >> 6) & 1,
+                    (bytevalue >> 5) & 1,
+                    (bytevalue >> 4) & 1,
+                    (bytevalue >> 3) & 1,
+                    (bytevalue >> 2) & 1,
+                    (bytevalue >> 1) & 1,
+                    (bytevalue >> 0) & 1);
+        }
+        if (focus == 3)
+        {
+            int bytevalue;
+            for (i = 0; i < 8; i++)
+            {
+                wprintw(ramview,"%04X %02X %02X %02X %02X %02X %02X %02X %02X\n", 
+                    i*8+memoffset, 
+                    emu.mExtData[i*8+0+memoffset], emu.mExtData[i*8+1+memoffset], emu.mExtData[i*8+2+memoffset], emu.mExtData[i*8+3+memoffset],
+                    emu.mExtData[i*8+4+memoffset], emu.mExtData[i*8+5+memoffset], emu.mExtData[i*8+6+memoffset], emu.mExtData[i*8+7+memoffset]);
+            }
+
+            bytevalue = emu.mExtData[memcursorpos / 2 + memoffset];
+            wattron(ramview, A_REVERSE);
+            wmove(ramview, memcursorpos / 16, 5 + ((memcursorpos % 16) / 2) * 3 + (memcursorpos & 1));
+            wprintw(ramview,"%X", (bytevalue >> (4 * (!(memcursorpos & 1)))) & 0xf);
+            wattroff(ramview, A_REVERSE);
+            wprintw(miscview, "ext %04X: %d %d %d %d %d %d %d %d", 
+                    memcursorpos / 2 + memoffset,
+                    (bytevalue >> 7) & 1,
+                    (bytevalue >> 6) & 1,
+                    (bytevalue >> 5) & 1,
+                    (bytevalue >> 4) & 1,
+                    (bytevalue >> 3) & 1,
+                    (bytevalue >> 2) & 1,
+                    (bytevalue >> 1) & 1,
+                    (bytevalue >> 0) & 1);
+        }
+        if (focus == 4)
+        {
+            int bytevalue;
+            for (i = 0; i < 8; i++)
+            {
+                wprintw(ramview,"%04X %02X %02X %02X %02X %02X %02X %02X %02X\n", 
+                    i*8+memoffset, 
+                    emu.mCodeMem[i*8+0+memoffset], emu.mCodeMem[i*8+1+memoffset], emu.mCodeMem[i*8+2+memoffset], emu.mCodeMem[i*8+3+memoffset],
+                    emu.mCodeMem[i*8+4+memoffset], emu.mCodeMem[i*8+5+memoffset], emu.mCodeMem[i*8+6+memoffset], emu.mCodeMem[i*8+7+memoffset]);
+            }
+
+            bytevalue = emu.mCodeMem[memcursorpos / 2 + memoffset];
+            wattron(ramview, A_REVERSE);
+            wmove(ramview, memcursorpos / 16, 5 + ((memcursorpos % 16) / 2) * 3 + (memcursorpos & 1));
+            wprintw(ramview,"%X", (bytevalue >> (4 * (!(memcursorpos & 1)))) & 0xf);
+            wattroff(ramview, A_REVERSE);
+            wprintw(miscview, "ROM %04X: %d %d %d %d %d %d %d %d", 
+                    memcursorpos / 2 + memoffset,
+                    (bytevalue >> 7) & 1,
+                    (bytevalue >> 6) & 1,
+                    (bytevalue >> 5) & 1,
+                    (bytevalue >> 4) & 1,
+                    (bytevalue >> 3) & 1,
+                    (bytevalue >> 2) & 1,
+                    (bytevalue >> 1) & 1,
+                    (bytevalue >> 0) & 1);
+        }
+
         for (i = 0; i < 14; i++)
         {
             wprintw(stackview," %02X\n", 
@@ -725,6 +1050,8 @@ int main(int parc, char ** pars)
             wrefresh(ramview);
             wrefresh(stackview);
         }
+        werase(stackview);
+        wrefresh(miscview);
     }
     while ( (ch = getch()) != 'Q' );
 
