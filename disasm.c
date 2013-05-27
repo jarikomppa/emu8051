@@ -14,6 +14,8 @@
 #include <string.h>
 #include "emu8051.h"
 
+//#define static
+
 void mem_memonic(int aValue, char *aBuffer)
 {
     int done = 0;

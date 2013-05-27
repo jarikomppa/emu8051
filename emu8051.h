@@ -54,6 +54,8 @@ int decode(struct em8051 *aCPU, int aPosition, unsigned char *aBuffer);
 // Load an intel hex format object file. Returns negative for errors.
 int load_obj(struct em8051 *aCPU, char *aFilename);
 
+// Alternate way to execute an opcode (switch-structure instead of function pointers)
+int do_op(struct em8051 *aCPU);
 
 // SFR register locations
 enum SFR_REGS
@@ -106,7 +108,7 @@ enum PSW_MASKS
 
 enum EM8051_EXCEPTION
 {
-    EXCEPTION_STACK,  // stack address > 127
+    EXCEPTION_STACK,  // stack address > 127 with no upper memory, or roll over
     EXCEPTION_ACC_TO_A, // acc-to-a move operation; illegal (acc-to-acc is ok, a-to-acc is ok..)
     EXCEPTION_IRET_PSW_MISMATCH, // psw not preserved over interrupt call (doesn't care about P, F0 or UNUSED)
     EXCEPTION_IRET_SP_MISMATCH,  // sp not preserved over interrupt call

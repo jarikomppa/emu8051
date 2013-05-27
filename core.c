@@ -21,11 +21,6 @@ General unknowns:
 #include <string.h>
 #include "emu8051.h"
 
-int decode(struct em8051 *aCPU, int aPosition, unsigned char *aBuffer)
-{
-    return aCPU->dec[aCPU->mCodeMem[aPosition & (aCPU->mCodeMemSize - 1)]](aCPU, aPosition, aBuffer);
-}
-
 int tick(struct em8051 *aCPU)
 {
     int v;
@@ -34,7 +29,8 @@ int tick(struct em8051 *aCPU)
         aCPU->mTickDelay--;
         return 0;
     }
-    aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemSize - 1)]](aCPU);
+    //aCPU->mTickDelay = aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemSize - 1)]](aCPU);
+    aCPU->mTickDelay = do_op(aCPU);
     // update parity bit
     v = aCPU->mSFR[REG_ACC];
     v ^= v >> 4;
@@ -45,6 +41,10 @@ int tick(struct em8051 *aCPU)
     return 1;
 }
 
+int decode(struct em8051 *aCPU, int aPosition, unsigned char *aBuffer)
+{
+    return aCPU->dec[aCPU->mCodeMem[aPosition & (aCPU->mCodeMemSize - 1)]](aCPU, aPosition, aBuffer);
+}
 
 void disasm_setptrs(struct em8051 *aCPU);
 void op_setptrs(struct em8051 *aCPU);
