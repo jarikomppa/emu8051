@@ -6,16 +6,6 @@
  * General emulation functions
  */
 
-/*
-General unknowns:
-- what happens when SP grows over 127? 
-  Does it grow over upper memory area if available? or bleed over sfr:s?
-  -> in data sheet; needs to be fixed
-- what should @R0 (R0>127) point at if there's no upper memory? 
-  SFR? loop back to lower memory? fail?
-- should MOVX commands mess up P0 and P2 somehow?
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -89,20 +79,20 @@ int readbyte(FILE * f)
 
 int load_obj(struct em8051 *aCPU, char *aFilename)
 {
-    FILE *f;
+    FILE *f;    
+    if (aFilename == 0 || aFilename[0] == 0)
+        return -1;
     f = fopen(aFilename, "r");
     if (!f) return -1;
+    if (fgetc(f) != ':')
+        return -2; // unsupported file format
     while (!feof(f))
     {
-        char sig;
         int recordlength;
         int address;
         int recordtype;
         int checksum;
         int i;
-        sig = fgetc(f);
-        if (sig != ':')
-            return -2; // unsupported file format
         recordlength = readbyte(f);
         address = readbyte(f);
         address <<= 8;
@@ -124,7 +114,7 @@ int load_obj(struct em8051 *aCPU, char *aFilename)
         checksum = 256 - checksum;
         if (i != (checksum & 0xff))
             return -4; // checksum failure
-        fgetc(f); // skip newline
+        while (fgetc(f) != ':' && !feof(f)) {} // skip newline        
     }
-    return -1;
+    return -5;
 }

@@ -214,13 +214,21 @@ void build_main_view()
 void emu_exception(struct em8051 *aCPU, int aCode)
 {
     WINDOW * exc;
+    nocbreak();
+    cbreak();
+    nodelay(stdscr, FALSE);
+    halfdelay(1);
+    while (getch() > 0) {}
+
+
     runmode = 0;
     setspeed(speed, runmode);
     exc = subwin(stdscr, 7, 50, (LINES-6)/2, (COLS-50)/2);
+    wattron(exc,A_REVERSE);
     werase(exc);
     box(exc,ACS_VLINE,ACS_HLINE);
     mvwaddstr(exc, 0, 2, "Exception");
-
+    wattroff(exc,A_REVERSE);
     wmove(exc, 2, 2);
 
     switch (aCode)
@@ -240,22 +248,193 @@ void emu_exception(struct em8051 *aCPU, int aCode)
     default:
         waddstr(exc,"Unknown exception"); 
     }
-    wmove(exc, 5, 5);
+    wmove(exc, 5, 12);
     waddstr(exc, "Press any key to continue");
 
     wrefresh(exc);
+
     getch();
     delwin(exc);
     wipe_main_view();
     build_main_view();
 }
 
+void emu_load(struct em8051 *aCPU)
+{
+    WINDOW * exc;
+    char temp[256];
+    int pos = 0;
+    int ch = 0;
+    int result;
+    temp[0] = 0;
 
-int main(void) 
+    runmode = 0;
+    setspeed(speed, runmode);
+    exc = subwin(stdscr, 5, 50, (LINES-6)/2, (COLS-50)/2);
+    wattron(exc,A_REVERSE);
+    werase(exc);
+    box(exc,ACS_VLINE,ACS_HLINE);
+    mvwaddstr(exc, 0, 2, "Load Intel HEX File");
+    wattroff(exc,A_REVERSE);
+    wmove(exc, 2, 2);
+    //            12345678901234567890123456780123456789012345
+    waddstr(exc,"[____________________________________________]"); 
+    wmove(exc,2,3);
+    wrefresh(exc);
+
+    while (ch != '\n')
+    {
+        ch = getch();
+        if (ch > 31 && ch < 127 || ch > 127 && ch < 255)
+        {
+            if (pos < 44)
+            {
+                temp[pos] = ch;
+                pos++;
+                temp[pos] = 0;
+                waddch(exc,ch);
+                wrefresh(exc);
+            }
+        }
+        if (ch == 8)
+        {
+            if (pos > 0)
+            {
+                pos--;
+                temp[pos] = 0;
+                wmove(exc,2,3+pos);
+                waddch(exc,'_');
+                wmove(exc,2,3+pos);
+                wrefresh(exc);
+            }
+        }
+    }
+
+    result = load_obj(aCPU, temp);
+    wmove(exc, 1, 12);
+    switch (result)
+    {
+    case 0:
+        waddstr(exc,"File loaded successfully.");
+        break;
+    case -1:
+        waddstr(exc,"File not found.");
+        break;
+    case -2:
+        waddstr(exc,"Bad file format.");
+        break;
+    case -3:
+        waddstr(exc,"Unsupported HEX file version.");
+        break;
+    case -4:
+        waddstr(exc,"Checksum failure.");
+        break;
+    case -5:
+        waddstr(exc,"No end of data marker found.");
+        break;
+    }
+    wmove(exc, 3, 12);
+    waddstr(exc, "Press any key to continue");
+    wrefresh(exc);
+
+    getch();
+    delwin(exc);
+    wipe_main_view();
+    build_main_view();
+}
+
+int emu_reset(struct em8051 *aCPU)
+{
+    WINDOW * exc;
+    char temp[256];
+    int pos = 0;
+    int ch = 0;
+    int result;
+    temp[0] = 0;
+
+    runmode = 0;
+    setspeed(speed, runmode);
+    exc = subwin(stdscr, 7, 60, (LINES-7)/2, (COLS-60)/2);
+    wattron(exc,A_REVERSE);
+    werase(exc);
+    box(exc,ACS_VLINE,ACS_HLINE);
+    mvwaddstr(exc, 0, 2, "Reset");
+    wattroff(exc,A_REVERSE);
+    wrefresh(exc);
+
+    wmove(exc, 2, 2);
+    waddstr(exc, "S)et PC = 0");
+    wmove(exc, 3, 2);
+    waddstr(exc, "R)eset (init regs, set PC to zero)");
+    wmove(exc, 4, 2);
+    waddstr(exc, "W)ipe (init regs, set PC to zero, clear memory)");
+    wrefresh(exc);
+
+    result = 0;
+    ch = getch();
+    switch (ch)
+    {
+    case 's':
+    case 'S':
+        aCPU->mPC = 0;
+        result = 1;
+        break;
+    case 'r':
+    case 'R':
+        reset(aCPU, 0);
+        result = 1;
+        break;
+    case 'w':
+    case 'W':
+        reset(aCPU, 1);
+        result = 1;
+        break;
+    }
+    delwin(exc);
+    wipe_main_view();
+    build_main_view();
+    return result;
+}
+
+void emu_help()
+{
+    WINDOW * exc;
+    char temp[256];
+    int pos = 0;
+    int ch = 0;
+    temp[0] = 0;
+
+    runmode = 0;
+    setspeed(speed, runmode);
+    exc = subwin(stdscr, 7, 60, (LINES-7)/2, (COLS-60)/2);
+    wattron(exc,A_REVERSE);
+    werase(exc);
+    box(exc,ACS_VLINE,ACS_HLINE);
+    mvwaddstr(exc, 0, 2, "Help");
+    wattroff(exc,A_REVERSE);
+    wrefresh(exc);
+
+    wmove(exc, 2, 2);
+    waddstr(exc, "8051 Emulator v. 0.1");
+    wmove(exc, 3, 2);
+    waddstr(exc, "Copyright (c) 2006 Jari Komppa");
+    wmove(exc, 5, 17);
+    waddstr(exc, "Press any key to continue");
+    wrefresh(exc);
+
+    ch = getch();
+
+    delwin(exc);
+    wipe_main_view();
+    build_main_view();
+}
+
+
+int main(int parc, char ** pars) 
 {
     char temp[256];    
     char assembly[256];
-    int      ch;
+    int ch = 0;
     struct em8051 emu;
     int clocks = 0, i;
     int ticked = 1;
@@ -281,8 +460,12 @@ int main(void)
     reset(&emu, 1);
     i = 0x100;
 
-    if (load_obj(&emu, "megatest.obj") != 0)
-        return;
+    if (parc > 1)
+    if (load_obj(&emu, pars[1]) != 0)
+    {
+        printf("File '%s' load failure\n\n",pars[1]);
+        return -1;
+    }
 
     /*  Initialize ncurses  */
 
@@ -303,9 +486,9 @@ int main(void)
 
 
 
-    /*  Loop until user hits 'q' to quit  */
+    /*  Loop until user hits 'shift-Q' to quit  */
 
-    while ( (ch = getch()) != 'Q' ) 
+    do
     {
         if (LINES != oldrows ||
             COLS != oldcols)
@@ -316,8 +499,10 @@ int main(void)
         switch (ch)
         {
         case 'h':
+            emu_help();
             break;
         case 'l':
+            emu_load(&emu);
             break;
         case ' ':
             runmode = 0;
@@ -366,6 +551,15 @@ int main(void)
         case '7':
         case '8':
         case '9':
+        case '0':
+        case 'a':
+        case 'A':
+        case 'b':
+        case 'B':
+        case 'c':
+        case 'C':
+        case 'd':
+        case 'D':
             break;
         case KEY_F(1):
             emu.mSFR[REG_P1] = 1;
@@ -383,10 +577,17 @@ int main(void)
             emu.mSFR[REG_P1] = 0;
             break;
         case KEY_HOME:
-            reset(&emu, 0);
-            clocks = 0;
-            ticked = 1;
+            if (emu_reset(&emu))
+            {
+                clocks = 0;
+                ticked = 1;
+            }
             break;
+        case KEY_END:
+            {
+                clocks = 0;
+                ticked = 1;
+            }
         }
 
         if (ch == 32 || runmode)
@@ -525,6 +726,7 @@ int main(void)
             wrefresh(stackview);
         }
     }
+    while ( (ch = getch()) != 'Q' );
 
 
     /*  Clean up after ourselves  */
