@@ -652,8 +652,11 @@ void mainview_update(struct em8051 *aCPU)
 
     for (i = 0; i < 14; i++)
     {
-        wprintw(stackview," %02X\n", 
-            aCPU->mLowerData[(i + aCPU->mSFR[REG_SP]-7)&0x7f]);
+		int offset = (i + aCPU->mSFR[REG_SP]-7)&0xff;
+		if (offset < 0x80)
+			wprintw(stackview," %02X\n", aCPU->mLowerData[offset]);
+		else
+			wprintw(stackview," %02X\n", aCPU->mUpperData[offset - 0x80]);
     }
 
     if (speed != 0 || runmode == 0)

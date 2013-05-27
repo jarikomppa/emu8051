@@ -105,33 +105,90 @@ void logicboard_tick(struct em8051 *aCPU)
 		if (chardisplaybusy > 0)
 			chardisplaybusy--;
 
-		if ((oldports[3] & 0x80) != 0 &&
-			(aCPU->mSFR[REG_P3] & 0x80) == 0)	
+		if (((aCPU->mSFR[REG_P3] & 0x20) == 0x20) && 
+			 ((oldports[3] & 0x80) == 0) &&
+			 ((aCPU->mSFR[REG_P3] & 0x80) != 0)) 
+		{
+			// Read op
+			// - E level rises from low to high on read ops			
+
+
+			if (aCPU->mSFR[REG_P3] & 0x40)
+			{   // P3.6
+				// memory IO mode
+
+				if (!chardisplaybusy)
+				{
+					// memory IO mode
+					if (chardisplaychargen == 0)
+					{
+						// read from display
+						chardisplaydata = chardisplayram[chardisplaycp & 0x7f];
+						if (!chardisplay4bmode || chardisplaytick)
+						{
+							chardisplaycp += chardisplaydir; 
+							if (chardisplayshift)
+								chardisplayofs += chardisplaydir;
+							// busy for 250 microseconds
+							chardisplaybusy = 250*opt_clock_hz / 12000000;
+						}
+					}
+					else
+					{
+						// read from chargen ram
+						chardisplaydata = chardisplaycgram[chardisplaycp & 0x3f];
+						if (!chardisplay4bmode || chardisplaytick)
+						{
+							chardisplaycp++; // assumed; not clear from data sheet
+							// busy for 250 microseconds
+							chardisplaybusy = 250*opt_clock_hz / 12000000;
+						}
+					}
+				}
+			}
+			else
+			{
+				// instruction mode				
+				chardisplaydata = chardisplaycp & 0x7f;
+				if (chardisplaybusy)
+					chardisplaydata |= 0x80;
+				// doesn't cause busy states
+			}
+
+			if (chardisplay4bmode == 0)
+			{
+				p1out = chardisplaydata;
+			}
+			else
+			{	
+				if (chardisplaytick)
+					p1out = (chardisplaydata << 4) & 0xf0;
+				else
+					p1out = (chardisplaydata << 0) & 0xf0;
+				chardisplaytick = !chardisplaytick;
+			}
+		}
+
+		if (((aCPU->mSFR[REG_P3] & 0x20) != 0x20) && 
+			 ((oldports[3] & 0x80) != 0) &&
+			 ((aCPU->mSFR[REG_P3] & 0x80) == 0))
 		{	// P3.7
-			// command pulse detected (E level drops from high to low)
+			// Write op
+			// - E level drops from high to low on write ops
+			
 			if (chardisplay4bmode == 0)
 			{
 				chardisplaydata = aCPU->mSFR[REG_P1];
 			}
 			else
 			{
-				if ((aCPU->mSFR[REG_P3] & 0x20) == 0x20)
-				{	
-					if (!chardisplaytick)
-						p1out = (chardisplaydata << 4) & 0xf0;
-					else
-						p1out = (chardisplaydata << 0) & 0xf0;
+				if (!chardisplaytick)
+				{
+					chardisplaydata = (chardisplaydata & 0xf) | (aCPU->mSFR[REG_P1] & 0xf0);
 				}
 				else
 				{
-					if (!chardisplaytick)
-					{
-						chardisplaydata = (chardisplaydata & 0xf) | (aCPU->mSFR[REG_P1] & 0xf0);
-					}
-					else
-					{
-						chardisplaydata = (chardisplaydata & 0xf0) | ((aCPU->mSFR[REG_P1] & 0xf0) >> 4);
-					}
+					chardisplaydata = (chardisplaydata & 0xf0) | ((aCPU->mSFR[REG_P1] & 0xf0) >> 4);
 				}
 				chardisplaytick = !chardisplaytick;
 			}
@@ -145,72 +202,27 @@ void logicboard_tick(struct em8051 *aCPU)
 						// memory IO mode
 						if (chardisplaychargen == 0)
 						{
-							if (aCPU->mSFR[REG_P3] & 0x20)
-							{
-								// read from display
-								chardisplaydata = chardisplayram[chardisplaycp & 0x7f];
-								if (chardisplay4bmode)
-									p1out = chardisplaydata & 0xf0;
-								else
-									p1out = chardisplaydata;
-								chardisplaycp += chardisplaydir; 
-								if (chardisplayshift)
-									chardisplayofs += chardisplaydir;
-								// busy for 250 microseconds
-								chardisplaybusy = 250*opt_clock_hz / 12000000;
-							}
-							else
-							{
-								// write to display
-								chardisplayram[chardisplaycp & 0x7f] = chardisplaydata;
-								chardisplaycp += chardisplaydir; 
-								if (chardisplayshift)
-									chardisplayofs += chardisplaydir;
-								// busy for 250 microseconds
-								chardisplaybusy = 250*opt_clock_hz / 12000000;
-							}
+							// write to display
+							chardisplayram[chardisplaycp & 0x7f] = chardisplaydata;
+							chardisplaycp += chardisplaydir; 
+							if (chardisplayshift)
+								chardisplayofs += chardisplaydir;
+							// busy for 250 microseconds
+							chardisplaybusy = 250*opt_clock_hz / 12000000;
 						}
 						else
 						{
-							// chargen mode
-							if (aCPU->mSFR[REG_P3] & 0x20)
-							{
-								// read from chargen ram
-								chardisplaydata = chardisplaycgram[chardisplaycp & 0x3f];
-								if (chardisplay4bmode)
-									p1out = chardisplaydata & 0xf0;
-								else
-									p1out = chardisplaydata;
-								chardisplaycp++; // assumed; not clear from data sheet
-								// busy for 250 microseconds
-								chardisplaybusy = 250*opt_clock_hz / 12000000;
-							}
-							else
-							{
-								// write to chargen ram
-								chardisplaycgram[chardisplaycp & 0x3f] = chardisplaydata;
-								chardisplaycp++;  // assumed: not clear from data sheet
-								// busy for 250 microseconds
-								chardisplaybusy = 250*opt_clock_hz / 12000000;
-							}
+							// write to chargen ram
+							chardisplaycgram[chardisplaycp & 0x3f] = chardisplaydata;
+							chardisplaycp++;  // assumed: not clear from data sheet
+							// busy for 250 microseconds
+							chardisplaybusy = 250*opt_clock_hz / 12000000;
 						}
 					}
 				}
 				else
 				{
 					// instruction mode				
-					if (aCPU->mSFR[REG_P3] & 0x20)
-					{   // P3.5
-						chardisplaydata = chardisplaycp & 0x7f;
-						if (chardisplaybusy)
-							chardisplaydata |= 0x80;
-						if (chardisplay4bmode)
-							p1out = chardisplaydata & 0xf0;
-						else
-							p1out = chardisplaydata;
-						// doesn't cause busy states
-					}
-					else
 					if (chardisplaybusy)
 					{
 						// if busy, only let the user read the busy state.
