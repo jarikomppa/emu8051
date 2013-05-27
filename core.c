@@ -496,7 +496,10 @@ int load_obj(struct em8051 *aCPU, char *aFilename)
     f = fopen(aFilename, "r");
     if (!f) return -1;
     if (fgetc(f) != ':')
+    {
+    	  fclose(f);
         return -2; // unsupported file format
+    }
     while (!feof(f))
     {
         int recordlength;
@@ -527,5 +530,6 @@ int load_obj(struct em8051 *aCPU, char *aFilename)
             return -4; // checksum failure
         while (fgetc(f) != ':' && !feof(f)) {} // skip newline        
     }
+	  fclose(f);
     return -5;
 }
