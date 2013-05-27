@@ -149,6 +149,9 @@
 				RelativePath=".\memeditor.c">
 			</File>
 			<File
+				RelativePath=".\options.c">
+			</File>
+			<File
 				RelativePath=".\popups.c">
 			</File>
 			<Filter

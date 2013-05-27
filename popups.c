@@ -52,6 +52,29 @@ void emu_popup(struct em8051 *aCPU, char *aTitle, char *aMessage)
 void emu_exception(struct em8051 *aCPU, int aCode)
 {
     WINDOW * exc;
+
+    switch (aCode)
+    {
+    case EXCEPTION_IRET_SP_MISMATCH:
+        if (opt_exception_iret_sp) return;
+        break;
+    case EXCEPTION_IRET_ACC_MISMATCH:
+        if (opt_exception_iret_acc) return;
+        break;
+    case EXCEPTION_IRET_PSW_MISMATCH:
+        if (opt_exception_iret_psw) return;
+        break;
+    case EXCEPTION_ACC_TO_A:
+        if (!opt_exception_acc_to_a) return;
+        break;
+    case EXCEPTION_STACK:
+        if (!opt_exception_stack) return;
+        break;
+    case EXCEPTION_ILLEGAL_OPCODE:
+        if (!opt_exception_invalid) return;
+        break;
+    }
+
     nocbreak();
     cbreak();
     nodelay(stdscr, FALSE);
@@ -269,6 +292,62 @@ int emu_readvalue(struct em8051 *aCPU, const char *aPrompt, int aOldvalue, int a
     delwin(exc);
     refreshview(aCPU);
     return strtol(temp, NULL, 16);
+}
+
+int emu_readhz(struct em8051 *aCPU, const char *aPrompt, int aOldvalue)
+{
+    WINDOW * exc;
+    int pos = 0;
+    int ch = 0;
+    char temp[24];
+
+    runmode = 0;
+    setSpeed(speed, runmode);
+    exc = subwin(stdscr, 5, 50, (LINES-6)/2, (COLS-50)/2);
+    wattron(exc,A_REVERSE);
+    werase(exc);
+    box(exc,ACS_VLINE,ACS_HLINE);
+    mvwaddstr(exc, 0, 2, aPrompt);
+    wattroff(exc,A_REVERSE);
+    wmove(exc, 2, 2);
+    pos = sprintf(temp, "%d", aOldvalue);
+    waddstr(exc,"[____________________]"); 
+    wmove(exc,2,3);
+    waddstr(exc, temp);
+    wrefresh(exc);
+
+    do
+    {
+        wmove(exc,2,3 + pos);
+        wrefresh(exc);
+        ch = getch();
+        if (ch >= '0' && ch <= '9')
+        {
+            if (pos < 20)
+            {
+                temp[pos] = ch;
+                pos++;
+                temp[pos] = 0;
+                waddch(exc,ch);
+            }
+        }
+        if (ch == KEY_DC || ch == 8)
+        {
+            if (pos > 0)
+            {
+                pos--;
+                temp[pos] = 0;
+                wmove(exc,2,3+pos);
+                waddch(exc,'_');
+                wmove(exc,2,3+pos);
+            }
+        }
+    }
+    while (ch != '\n');
+
+    delwin(exc);
+    refreshview(aCPU);
+    return strtol(temp, NULL, 10);
 }
 
 int emu_reset(struct em8051 *aCPU)

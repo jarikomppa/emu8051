@@ -407,8 +407,9 @@ void mainview_update(struct em8051 *aCPU)
 
 
     werase(miscview);
-    wprintw(miscview, "Cycles:%10u\n", clocks);
-    wprintw(miscview, "Time  :%10.3fms (@12MHz)\n", 1000.0f * clocks * (1.0f/(12.0f*1000*1000)));
+    wprintw(miscview, "\nCycles :% 10u\n", clocks);
+    wprintw(miscview, "Time   :% 14.3fms\n", 1000.0f * clocks * (1.0f/opt_clock_hz));
+    wprintw(miscview, "HW     : Super8051 @%0.1fMHz", opt_clock_hz / (1000*1000.0f));
 
     werase(ramview);
     for (i = 0; i < 8; i++)
@@ -424,7 +425,7 @@ void mainview_update(struct em8051 *aCPU)
     wmove(ramview, memcursorpos / 16, 5 + ((memcursorpos % 16) / 2) * 3 + (memcursorpos & 1));
     wprintw(ramview,"%X", (bytevalue >> (4 * (!(memcursorpos & 1)))) & 0xf);
     wattroff(ramview, A_REVERSE);
-    wprintw(miscview, "%s %04X: %d %d %d %d %d %d %d %d", 
+    mvwprintw(miscview, 0,0,"%s%04X: %d %d %d %d %d %d %d %d", 
             memtypes[focus],
             memcursorpos / 2 + memoffset,
             (bytevalue >> 7) & 1,

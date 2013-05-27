@@ -12,8 +12,9 @@
 enum EMU_VIEWS
 {
     MAIN_VIEW = 0,
-    LOGICBOARD_VIEW = 1,
-    MEMEDITOR_VIEW = 2
+    MEMEDITOR_VIEW = 1,
+    LOGICBOARD_VIEW = 2,
+    OPTIONS_VIEW = 3
 };
 
 
@@ -47,6 +48,14 @@ extern int p3out;
 // current clock count
 unsigned int clocks;
 
+int opt_exception_iret_sp;
+int opt_exception_iret_acc;
+int opt_exception_iret_psw;
+int opt_exception_acc_to_a;
+int opt_exception_stack;
+int opt_exception_invalid;
+int opt_clock_hz;
+
 
 // emu.c
 extern int getTick();
@@ -59,6 +68,7 @@ extern void change_view(struct em8051 *aCPU, int changeto);
 extern void emu_help(struct em8051 *aCPU);
 extern int emu_reset(struct em8051 *aCPU);
 extern int emu_readvalue(struct em8051 *aCPU, const char *aPrompt, int aOldvalue, int aValueSize);
+extern int emu_readhz(struct em8051 *aCPU, const char *aPrompt, int aOldvalue);
 extern void emu_load(struct em8051 *aCPU);
 extern void emu_exception(struct em8051 *aCPU, int aCode);
 extern void emu_popup(struct em8051 *aCPU, char *aTitle, char *aMessage);
@@ -82,6 +92,11 @@ extern void build_memeditor_view(struct em8051 *aCPU);
 extern void memeditor_editor_keys(struct em8051 *aCPU, int ch);
 extern void memeditor_update(struct em8051 *aCPU);
 
+// options.c
+extern void wipe_options_view();
+extern void build_options_view(struct em8051 *aCPU);
+extern void options_editor_keys(struct em8051 *aCPU, int ch);
+extern void options_update(struct em8051 *aCPU);
 
 
 

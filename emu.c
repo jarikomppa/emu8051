@@ -193,6 +193,9 @@ void change_view(struct em8051 *aCPU, int changeto)
     case MEMEDITOR_VIEW:
         wipe_memeditor_view();
         break;
+    case OPTIONS_VIEW:
+        wipe_options_view();
+        break;
     }
     view = changeto;
     switch (view)
@@ -205,6 +208,9 @@ void change_view(struct em8051 *aCPU, int changeto)
         break;
     case MEMEDITOR_VIEW:
         build_memeditor_view(aCPU);
+        break;
+    case OPTIONS_VIEW:
+        build_options_view(aCPU);
         break;
     }
 }
@@ -280,7 +286,7 @@ int main(int parc, char ** pars)
         switch (ch)
         {
         case 'v':
-            change_view(&emu, (view + 1) % 3);
+            change_view(&emu, (view + 1) % 4);
             break;
         case 'k':
             if (breakpoint != -1)
@@ -381,6 +387,9 @@ int main(int parc, char ** pars)
             case MEMEDITOR_VIEW:
                 memeditor_editor_keys(&emu, ch);
                 break;
+            case OPTIONS_VIEW:
+                options_editor_keys(&emu, ch);
+                break;
             }
             break;
         case KEY_HOME:
@@ -401,12 +410,18 @@ int main(int parc, char ** pars)
         {
             int targettime;
             unsigned int targetclocks;
-            targetclocks = clocks;
+            targetclocks = 1;
             targettime = getTick();
+
+            if (speed == 2 && runmode)
+            {
+                targettime += 1;
+                targetclocks += (opt_clock_hz / 1000) - 1;
+            }
             if (speed < 2 && runmode)
             {
                 targettime += 10;
-                targetclocks += 120000;
+                targetclocks += (opt_clock_hz / 100) - 1;
             }
 
             do
@@ -416,7 +431,7 @@ int main(int parc, char ** pars)
                 clocks += 12;
                 ticked = tick(&emu);
                 logicboard_tick(&emu);
-                
+
                 if (emu.mPC == breakpoint)
                     emu_exception(&emu, -1);
 
@@ -430,9 +445,10 @@ int main(int parc, char ** pars)
                     memcpy(history + (historyline * (128 + 64 + sizeof(int))) + 128, emu.mLowerData, 64);
                     memcpy(history + (historyline * (128 + 64 + sizeof(int))) + 128 + 64, &old_pc, sizeof(int));
                 }
+                targetclocks--;
             }
-            while (targettime > getTick() && targetclocks > clocks);
-            
+            while (targettime > getTick() && targetclocks);
+
             while (targettime > getTick())
             {
                 emu_sleep(1);
@@ -449,6 +465,9 @@ int main(int parc, char ** pars)
             break;
         case MEMEDITOR_VIEW:
             memeditor_update(&emu);
+            break;
+        case OPTIONS_VIEW:
+            options_update(&emu);
             break;
         }
     }
