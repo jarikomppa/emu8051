@@ -38,7 +38,7 @@ static void timer_tick(struct em8051 *aCPU)
 
     // TODO: External int 0 flag
 
-    if ((aCPU->mSFR[REG_TMOD] & (TMODMASK_M0_0 | TMODMASK_M1_0)))
+    if ((aCPU->mSFR[REG_TMOD] & (TMODMASK_M0_0 | TMODMASK_M1_0)) == (TMODMASK_M0_0 | TMODMASK_M1_0))
     {
         // timer/counter 0 in mode 3
 

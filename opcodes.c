@@ -109,12 +109,18 @@ static int pop_from_stack(struct em8051 *aCPU)
 }
 
 
-static void add_solve_flags(struct em8051 * aCPU, int value1, int value2)
+static void add_solve_flags(struct em8051 * aCPU, int value1, int value2, int acc)
 {
-    int carry = ((value1 & 255) + (value2 & 255)) >> 8;
-    int auxcarry = ((value1 & 7) + (value2 & 7)) >> 3;
-    int overflow = (((value1 & 127) + (value2 & 127)) >> 7)^carry;
-    PSW = (PSW & ~(PSWMASK_C|PSWMASK_AC|PSWMASK_OV)) |
+    /* Carry: overflow from 7th bit to 8th bit */
+    int carry = ((value1 & 255) + (value2 & 255) + acc) >> 8;
+    
+    /* Auxiliary carry: overflow from 3th bit to 4th bit */
+    int auxcarry = ((value1 & 7) + (value2 & 7) + acc) >> 3;
+    
+    /* Overflow: overflow from 6th or 7th bit, but not both */
+    int overflow = (((value1 & 127) + (value2 & 127) + acc) >> 7)^carry;
+    
+    PSW = (PSW & ~(PSWMASK_C | PSWMASK_AC | PSWMASK_OV)) |
           (carry << PSW_C) | (auxcarry << PSW_AC) | (overflow << PSW_OV);
 }
 
@@ -369,7 +375,7 @@ static int rl_a(struct em8051 *aCPU)
 
 static int add_a_imm(struct em8051 *aCPU)
 {
-    add_solve_flags(aCPU, ACC, OPERAND1);
+    add_solve_flags(aCPU, ACC, OPERAND1, 0);
     ACC += OPERAND1;
     PC += 2;
     return 0;
@@ -378,8 +384,9 @@ static int add_a_imm(struct em8051 *aCPU)
 static int add_a_mem(struct em8051 *aCPU)
 {
     int value = read_mem(aCPU, OPERAND1);
-    add_solve_flags(aCPU, ACC, value);
-    PC += 2;
+    add_solve_flags(aCPU, ACC, value, 0);
+    ACC += value;
+	PC += 2;
     return 0;
 }
 
@@ -394,12 +401,12 @@ static int add_a_indir_rx(struct em8051 *aCPU)
             value = aCPU->mUpperData[address - 0x80];
         }
 
-        add_solve_flags(aCPU, ACC, value);
+        add_solve_flags(aCPU, ACC, value, 0);
         ACC += value;
     }
     else
     {
-        add_solve_flags(aCPU, ACC, aCPU->mLowerData[address]);
+        add_solve_flags(aCPU, ACC, aCPU->mLowerData[address], 0);
         ACC += aCPU->mLowerData[address];
     }
 
@@ -490,7 +497,7 @@ static int rlc_a(struct em8051 *aCPU)
 static int addc_a_imm(struct em8051 *aCPU)
 {
     int carry = CARRY;
-    add_solve_flags(aCPU, ACC, carry + OPERAND1);
+    add_solve_flags(aCPU, ACC, OPERAND1, carry);
     ACC += OPERAND1 + carry;
     PC += 2;
     return 0;
@@ -498,9 +505,10 @@ static int addc_a_imm(struct em8051 *aCPU)
 
 static int addc_a_mem(struct em8051 *aCPU)
 {
-    int value = read_mem(aCPU, OPERAND1) + CARRY;
-    add_solve_flags(aCPU, ACC, value);
-    ACC += value;
+    int carry = CARRY;
+    int value = read_mem(aCPU, OPERAND1);
+    add_solve_flags(aCPU, ACC, value, carry);
+    ACC += value + carry;
     PC += 2;
     return 0;
 }
@@ -517,12 +525,12 @@ static int addc_a_indir_rx(struct em8051 *aCPU)
             value = aCPU->mUpperData[address - 0x80];
         }
 
-        add_solve_flags(aCPU, ACC, value);
-        ACC += value;
+        add_solve_flags(aCPU, ACC, value, carry);
+        ACC += value + carry;
     }
     else
     {
-        add_solve_flags(aCPU, ACC, aCPU->mLowerData[address] + carry);
+        add_solve_flags(aCPU, ACC, aCPU->mLowerData[address], carry);
         ACC += aCPU->mLowerData[address] + carry;
     }
     PC++;
@@ -1784,7 +1792,7 @@ static int dec_rx(struct em8051 *aCPU)
 static int add_a_rx(struct em8051 *aCPU)
 {
     int rx = RX_ADDRESS;
-    add_solve_flags(aCPU, aCPU->mLowerData[rx], ACC);
+    add_solve_flags(aCPU, aCPU->mLowerData[rx], ACC, 0);
     ACC += aCPU->mLowerData[rx];
     PC++;
     return 0;
@@ -1794,7 +1802,7 @@ static int addc_a_rx(struct em8051 *aCPU)
 {
     int rx = RX_ADDRESS;
     int carry = CARRY;
-    add_solve_flags(aCPU, aCPU->mLowerData[rx] + carry, ACC);
+    add_solve_flags(aCPU, aCPU->mLowerData[rx], ACC, carry);
     ACC += aCPU->mLowerData[rx] + carry;
     PC++;
     return 0;

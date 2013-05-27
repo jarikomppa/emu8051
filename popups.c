@@ -441,7 +441,7 @@ void emu_help(struct em8051 *aCPU)
     wrefresh(exc);
 
     wmove(exc, 2, 2);
-    waddstr(exc, "8051 Emulator v. 0.7 - http://iki.fi/sol/");
+    waddstr(exc, "8051 Emulator v. 0.72 - http://iki.fi/sol/");
     wmove(exc, 3, 2);
     waddstr(exc, "Copyright (c) 2006 Jari Komppa");
     wmove(exc, 13, 22);
