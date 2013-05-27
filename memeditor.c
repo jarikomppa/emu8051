@@ -1,6 +1,26 @@
 /* 8051 emulator 
  * Copyright 2006 Jari Komppa
- * Released under GPL
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining 
+ * a copy of this software and associated documentation files (the 
+ * "Software"), to deal in the Software without restriction, including 
+ * without limitation the rights to use, copy, modify, merge, publish, 
+ * distribute, sublicense, and/or sell copies of the Software, and to 
+ * permit persons to whom the Software is furnished to do so, subject 
+ * to the following conditions: 
+ *
+ * The above copyright notice and this permission notice shall be included 
+ * in all copies or substantial portions of the Software. 
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
+ * IN THE SOFTWARE. 
+ *
+ * (i.e. the MIT License)
  *
  * memeditor.c
  * Memory editor view
@@ -21,6 +41,7 @@ struct memeditor
     int cursorpos;
     int memoffset;
     int maxmem;
+    int memviewoffset;
 };
 
 static struct memeditor eds[5];
@@ -47,6 +68,7 @@ void build_memeditor_view(struct em8051 *aCPU)
     eds[0].view = subwin(eds[0].box, eds[0].lines - 2, 38, 1, 1);
     eds[0].maxmem = 128;
     eds[0].memarea = aCPU->mLowerData;
+    eds[0].memviewoffset = 0;
 
     eds[1].lines = (LINES / 3);
     eds[1].box = subwin(stdscr, eds[1].lines, 40, eds[0].lines, 0);
@@ -58,6 +80,7 @@ void build_memeditor_view(struct em8051 *aCPU)
     else
         eds[1].maxmem = 0;
     eds[1].memarea = aCPU->mUpperData;
+    eds[1].memviewoffset = 128;
 
     eds[2].lines = LINES - (eds[0].lines + eds[1].lines);
     eds[2].box = subwin(stdscr, eds[2].lines, 40, eds[0].lines + eds[1].lines, 0);
@@ -66,6 +89,7 @@ void build_memeditor_view(struct em8051 *aCPU)
     eds[2].view = subwin(eds[2].box, eds[2].lines - 2, 38, eds[0].lines + eds[1].lines + 1, 1);
     eds[2].maxmem = 128;
     eds[2].memarea = aCPU->mSFR;
+    eds[2].memviewoffset = 128;
 
     eds[3].lines = LINES / 2;
     eds[3].box = subwin(stdscr, eds[3].lines, 40, 0, 40);
@@ -74,6 +98,7 @@ void build_memeditor_view(struct em8051 *aCPU)
     eds[3].view = subwin(eds[3].box, eds[3].lines - 2, 38, 1, 41);    
     eds[3].maxmem = aCPU->mExtDataSize;
     eds[3].memarea = aCPU->mExtData;
+    eds[3].memviewoffset = 0;
 
     eds[4].lines = LINES / 2;
     eds[4].box = subwin(stdscr, eds[3].lines, 40, eds[3].lines, 40);
@@ -82,6 +107,7 @@ void build_memeditor_view(struct em8051 *aCPU)
     eds[4].view = subwin(eds[4].box, eds[4].lines - 2, 38, eds[3].lines + 1, 41);
     eds[4].maxmem = aCPU->mCodeMemSize;
     eds[4].memarea = aCPU->mCodeMem;     
+    eds[4].memviewoffset = 0;
 
     // TODO: make sure cursorpos / memoffset are within legal values,
     // but don't mess them up otherwise
@@ -222,7 +248,7 @@ void memeditor_update(struct em8051 *aCPU)
             for (j = 0; j < eds[i].lines - 2; j++)
             {
                 wprintw(eds[i].view,"%04X %02X %02X %02X %02X %02X %02X %02X %02X %c%c%c%c%c%c%c%c\n", 
-                    j*8+eds[i].memoffset, 
+                    j*8+eds[i].memoffset+eds[i].memviewoffset, 
                     eds[i].memarea[j*8+0+eds[i].memoffset], 
                     eds[i].memarea[j*8+1+eds[i].memoffset], 
                     eds[i].memarea[j*8+2+eds[i].memoffset], 

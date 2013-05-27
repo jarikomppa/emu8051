@@ -1,6 +1,26 @@
 /* 8051 emulator 
  * Copyright 2006 Jari Komppa
- * Released under GPL
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining 
+ * a copy of this software and associated documentation files (the 
+ * "Software"), to deal in the Software without restriction, including 
+ * without limitation the rights to use, copy, modify, merge, publish, 
+ * distribute, sublicense, and/or sell copies of the Software, and to 
+ * permit persons to whom the Software is furnished to do so, subject 
+ * to the following conditions: 
+ *
+ * The above copyright notice and this permission notice shall be included 
+ * in all copies or substantial portions of the Software. 
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
+ * IN THE SOFTWARE. 
+ *
+ * (i.e. the MIT License)
  *
  * emu.c
  * Curses-based emulator front-end
@@ -146,37 +166,64 @@ void setSpeed(int speed, int runmode)
 
 
 int emu_sfrread(struct em8051 *aCPU, int aRegister)
-{
+{    
+    int outputbyte = -1;
+
     if (view == LOGICBOARD_VIEW)
     {
         if (aRegister == REG_P0 + 0x80)
-            return p0out;
+        {
+            outputbyte = p0out;
+        }
         if (aRegister == REG_P1 + 0x80)
-            return p1out;
+        {
+            outputbyte =  p1out;
+        }
         if (aRegister == REG_P2 + 0x80)
-            return p2out;
+        {
+            outputbyte =  p2out;
+        }
         if (aRegister == REG_P3 + 0x80)
-            return p3out;
+        {
+            outputbyte =  p3out;
+        }
     }
     else
     {
         if (aRegister == REG_P0 + 0x80)
         {
-            return p0out = emu_readvalue(aCPU, "P0 port read", p0out, 2);
+            outputbyte = p0out = emu_readvalue(aCPU, "P0 port read", p0out, 2);
         }
         if (aRegister == REG_P1 + 0x80)
         {
-            return p1out = emu_readvalue(aCPU, "P1 port read", p1out, 2);
+            outputbyte = p1out = emu_readvalue(aCPU, "P1 port read", p1out, 2);
         }
         if (aRegister == REG_P2 + 0x80)
         {
-            return p2out = emu_readvalue(aCPU, "P2 port read", p2out, 2);
+            outputbyte = p2out = emu_readvalue(aCPU, "P2 port read", p2out, 2);
         }
         if (aRegister == REG_P3 + 0x80)
         {
-            return p3out = emu_readvalue(aCPU, "P3 port read", p3out, 2);
+            outputbyte = p3out = emu_readvalue(aCPU, "P3 port read", p3out, 2);
         }
     }
+    if (outputbyte != -1)
+    {
+        if (opt_input_outputlow == 1)
+        {
+            // option: output 1 even though ouput latch is 0
+            return outputbyte;
+        }
+        if (opt_input_outputlow == 0)
+        {
+            // option: output 0 if output latch is 0
+            return outputbyte & aCPU->mSFR[aRegister - 0x80];
+        }
+        // option: dump random values for output bits with
+        // output latches set to 0
+        return outputbyte & aCPU->mSFR[aRegister - 0x80] | 
+            (rand() & ~aCPU->mSFR[aRegister - 0x80]);
+    }    
     return aCPU->mSFR[aRegister - 0x80];
     
 }
@@ -238,19 +285,135 @@ int main(int parc, char ** pars)
     emu.mSFR         = malloc(128);
     emu.except       = &emu_exception;
     emu.sfrread      = &emu_sfrread;
-    reset(&emu, 1);
-    i = 0x100;
+    emu.xread = NULL;
+    emu.xwrite = NULL;
+    reset(&emu, 1);    
 
     if (parc > 1)
     {
-        if (load_obj(&emu, pars[1]) != 0)
+        for (i = 1; i < parc; i++)
         {
-            printf("File '%s' load failure\n\n",pars[1]);
-            return -1;
-        }
-        else
-        {
-            strcpy(filename, pars[1]);
+            if (pars[i][0] == '-' || pars[i][0] == '/')
+            {
+                if (strcmp("step_instruction",pars[i]+1) == 0)
+                {
+                    opt_step_instruction = 1;
+                }
+                else
+                if (strcmp("si",pars[i]+1) == 0)
+                {
+                    opt_step_instruction = 1;
+                }
+                else
+                if (strcmp("noexc_iret_sp",pars[i]+1) == 0)
+                {
+                    opt_exception_iret_sp = 0;
+                }
+                else
+                if (strcmp("nosp",pars[i]+1) == 0)
+                {
+                    opt_exception_iret_sp = 0;
+                }
+                else
+                if (strcmp("noexc_iret_acc",pars[i]+1) == 0)
+                {
+                    opt_exception_iret_acc = 0;
+                }
+                else
+                if (strcmp("noacc",pars[i]+1) == 0)
+                {
+                    opt_exception_iret_acc = 0;
+                }
+                else
+                if (strcmp("noexc_iret_psw",pars[i]+1) == 0)
+                {
+                    opt_exception_iret_psw = 0;
+                }
+                else
+                if (strcmp("nopsw",pars[i]+1) == 0)
+                {
+                    opt_exception_iret_psw = 0;
+                }
+                else
+                if (strcmp("noexc_acc_to_a",pars[i]+1) == 0)
+                {
+                    opt_exception_acc_to_a = 0;
+                }
+                else
+                if (strcmp("noaa",pars[i]+1) == 0)
+                {
+                    opt_exception_acc_to_a = 0;
+                }
+                else
+                if (strcmp("noexc_stack",pars[i]+1) == 0)
+                {
+                    opt_exception_stack = 0;
+                }
+                else
+                if (strcmp("nostk",pars[i]+1) == 0)
+                {
+                    opt_exception_stack = 0;
+                }
+                else
+                if (strcmp("noexc_invalid_op",pars[i]+1) == 0)
+                {
+                    opt_exception_invalid = 0;
+                }
+                else
+                if (strcmp("noiop",pars[i]+1) == 0)
+                {
+                    opt_exception_invalid = 0;
+                }
+                else
+                if (strcmp("iolowlow",pars[i]+1) == 0)
+                {
+                    opt_input_outputlow = 0;
+                }
+                else
+                if (strcmp("iolowrand",pars[i]+1) == 0)
+                {
+                    opt_input_outputlow = 2;
+                }
+                else
+                if (strncmp("clock=",pars[i]+1,6) == 0)
+                {
+                    opt_clock_select = 12;
+                    opt_clock_hz = atoi(pars[i]+7);
+                    if (opt_clock_hz <= 0)
+                        opt_clock_hz = 1;
+                }
+                else
+                {
+                    printf("Help:\n\n"
+                        "emu8051 [options] [filename]\n\n"
+                        "Both the filename and options are optional. Available options:\n\n"
+                        "Option            Alternate   description\n"
+                        "-step_instruction -si         Step one instruction at a time\n"
+                        "-noexc_iret_sp    -nosp       Disable sp iret exception\n"
+                        "-noexc_iret_acc   -noacc      Disable acc iret exception\n"
+                        "-noexc_iret_psw   -nopsw      Disable pdw iret exception\n"
+                        "-noexc_acc_to_a   -noaa       Disable acc-to-a invalid instruction exception\n"
+                        "-noexc_stack      -nostk      Disable stack abnormal behaviour exception\n"
+                        "-noexc_invalid_op -noiop      Disable invalid opcode exception\n"
+                        "-iolowlow         If out pin is low, hi input from same pin is low\n"
+                        "-iolowrand        If out pin is low, hi input from same pin is random\n"
+                        "-clock=value      Set clock speed, in Hz\n"
+                        );
+                    return -1;
+                }
+            }
+            else
+            {
+                if (load_obj(&emu, pars[i]) != 0)
+                {
+                    printf("File '%s' load failure\n\n",pars[i]);
+                    return -1;
+                }
+                else
+                {
+                    strcpy(filename, pars[i]);
+                }
+            }
         }
     }
 
@@ -328,9 +491,7 @@ int main(int parc, char ** pars)
             break;
         case ' ':
             runmode = 0;
-            nocbreak();
-            cbreak();
-            nodelay(stdscr, FALSE);
+            setSpeed(speed, runmode);
             break;
         case 'r':
             if (runmode)
@@ -415,9 +576,24 @@ int main(int parc, char ** pars)
             {
                 int old_pc;
                 old_pc = emu.mPC;
-                clocks += 12;
-                ticked = tick(&emu);
-                logicboard_tick(&emu);
+                if (opt_step_instruction)
+                {
+                    ticked = 0;
+                    while (!ticked)
+                    {
+                        targetclocks--;
+                        clocks += 12;
+                        ticked = tick(&emu);
+                        logicboard_tick(&emu);
+                    }
+                }
+                else
+                {
+                    targetclocks--;
+                    clocks += 12;
+                    ticked = tick(&emu);
+                    logicboard_tick(&emu);
+                }
 
                 if (emu.mPC == breakpoint)
                     emu_exception(&emu, -1);
@@ -432,9 +608,8 @@ int main(int parc, char ** pars)
                     memcpy(history + (historyline * (128 + 64 + sizeof(int))) + 128, emu.mLowerData, 64);
                     memcpy(history + (historyline * (128 + 64 + sizeof(int))) + 128 + 64, &old_pc, sizeof(int));
                 }
-                targetclocks--;
             }
-            while (targettime > getTick() && targetclocks);
+            while (targettime > getTick() && targetclocks > 0);
 
             while (targettime > getTick())
             {

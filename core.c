@@ -1,6 +1,26 @@
 /* 8051 emulator core
  * Copyright 2006 Jari Komppa
- * Released under LGPL
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining 
+ * a copy of this software and associated documentation files (the 
+ * "Software"), to deal in the Software without restriction, including 
+ * without limitation the rights to use, copy, modify, merge, publish, 
+ * distribute, sublicense, and/or sell copies of the Software, and to 
+ * permit persons to whom the Software is furnished to do so, subject 
+ * to the following conditions: 
+ *
+ * The above copyright notice and this permission notice shall be included 
+ * in all copies or substantial portions of the Software. 
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
+ * IN THE SOFTWARE. 
+ *
+ * (i.e. the MIT License)
  *
  * core.c
  * General emulation functions
@@ -17,6 +37,75 @@ static void timer_tick(struct em8051 *aCPU)
     int v;
 
     // TODO: External int 0 flag
+
+    if ((aCPU->mSFR[REG_TMOD] & (TMODMASK_M0_0 | TMODMASK_M1_0)))
+    {
+        // timer/counter 0 in mode 3
+
+        increment = 0;
+        
+        // Check if we're run enabled
+        // TODO: also run if GATE is one and INT is one (external interrupt)
+        if (!(aCPU->mSFR[REG_TMOD] & TMODMASK_GATE_0) && 
+            (aCPU->mSFR[REG_TCON] & TCONMASK_TR0))
+        {
+            // check timer / counter mode
+            if (aCPU->mSFR[REG_TMOD] & TMODMASK_CT_0)
+            {
+                // counter op;
+                // counter works if T0 pin was 1 and is now 0 (P3.4 on AT89C2051)
+                increment = 0; // TODO
+            }
+            else
+            {
+                increment = 1;
+            }
+        }
+        if (increment)
+        {
+            v = aCPU->mSFR[REG_TL0];
+            v++;
+            aCPU->mSFR[REG_TL0] = v & 0xff;
+            if (v > 0xff)
+            {
+                // TL0 overflowed
+                aCPU->mSFR[REG_TCON] |= TCONMASK_TF0;
+            }
+        }
+
+        increment = 0;
+        
+        // Check if we're run enabled
+        // TODO: also run if GATE is one and INT is one (external interrupt)
+        if (!(aCPU->mSFR[REG_TMOD] & TMODMASK_GATE_1) && 
+            (aCPU->mSFR[REG_TCON] & TCONMASK_TR1))
+        {
+            // check timer / counter mode
+            if (aCPU->mSFR[REG_TMOD] & TMODMASK_CT_1)
+            {
+                // counter op;
+                // counter works if T1 pin was 1 and is now 0
+                increment = 0; // TODO
+            }
+            else
+            {
+                increment = 1;
+            }
+        }
+
+        if (increment)
+        {
+            v = aCPU->mSFR[REG_TH0];
+            v++;
+            aCPU->mSFR[REG_TH0] = v & 0xff;
+            if (v > 0xff)
+            {
+                // TH0 overflowed
+                aCPU->mSFR[REG_TCON] |= TCONMASK_TF1;
+            }
+        }
+
+    }
 
     {   // Timer/counter 0
         
@@ -323,7 +412,17 @@ int tick(struct em8051 *aCPU)
     {
         aCPU->mTickDelay--;
     }
-    else
+
+    // Interrupts are sent if the following cases are not true:
+    // 1. interrupt of equal or higher priority is in progress (tested inside function)
+    // 2. current cycle is not the final cycle of instruction (tickdelay = 0)
+    // 3. the instruction in progress is RETI or any write to the IE or IP regs (TODO)
+    if (aCPU->mTickDelay == 0)
+    {
+        handle_interrupts(aCPU);
+    }
+
+    if (aCPU->mTickDelay == 0)
     {
         aCPU->mTickDelay = aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemSize - 1)]](aCPU);
         ticked = 1;
@@ -336,15 +435,6 @@ int tick(struct em8051 *aCPU)
     }
 
     timer_tick(aCPU);
-
-    // Interrupts are sent if the following cases are not true:
-    // 1. interrupt of equal or higher priority is in progress (tested inside function)
-    // 2. current cycle is not the final cycle of instruction (tickdelay = 0)
-    // 3. the instruction in progress is RETI or any write to the IE or IP regs (TODO)
-    if (aCPU->mTickDelay == 0)
-    {
-        handle_interrupts(aCPU);
-    }
 
     return ticked;
 }

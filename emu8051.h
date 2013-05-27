@@ -1,3 +1,31 @@
+/* 8051 emulator core
+ * Copyright 2006 Jari Komppa
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining 
+ * a copy of this software and associated documentation files (the 
+ * "Software"), to deal in the Software without restriction, including 
+ * without limitation the rights to use, copy, modify, merge, publish, 
+ * distribute, sublicense, and/or sell copies of the Software, and to 
+ * permit persons to whom the Software is furnished to do so, subject 
+ * to the following conditions: 
+ *
+ * The above copyright notice and this permission notice shall be included 
+ * in all copies or substantial portions of the Software. 
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
+ * IN THE SOFTWARE. 
+ *
+ * (i.e. the MIT License)
+ *
+ * emu8051.h
+ * Emulator core header file
+ */
+
 struct em8051;
 
 // Operation: returns number of ticks the operation should take
@@ -18,6 +46,16 @@ typedef int (*em8051sfrread)(struct em8051 *aCPU, int aRegister);
 // Default is to do nothing
 typedef void (*em8051sfrwrite)(struct em8051 *aCPU, int aRegister);
 
+// Callback: writing to external memory
+// Default is to update external memory
+// (can be used to control some peripherals)
+typedef void (*em8051xwrite)(struct em8051 *aCPU, int aAddress, int aValue);
+
+// Callback: reading from external memory
+// Default is to return the value in external memory 
+// (can be used to control some peripherals)
+typedef int (*em8051xread)(struct em8051 *aCPU, int aAddress);
+
 
 struct em8051
 {
@@ -35,6 +73,8 @@ struct em8051
     em8051exception except; // callback: exceptional situation occurred
     em8051sfrread sfrread; // callback: SFR register being read
     em8051sfrwrite sfrwrite; // callback: SFR register written
+    em8051xread xread; // callback: external memory being read
+    em8051xwrite xwrite; // callback: external memory being written
 
     // Internal values for interrupt services etc.
     int mInterruptActive;

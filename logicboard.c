@@ -1,6 +1,26 @@
 /* 8051 emulator 
  * Copyright 2006 Jari Komppa
- * Released under GPL
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining 
+ * a copy of this software and associated documentation files (the 
+ * "Software"), to deal in the Software without restriction, including 
+ * without limitation the rights to use, copy, modify, merge, publish, 
+ * distribute, sublicense, and/or sell copies of the Software, and to 
+ * permit persons to whom the Software is furnished to do so, subject 
+ * to the following conditions: 
+ *
+ * The above copyright notice and this permission notice shall be included 
+ * in all copies or substantial portions of the Software. 
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
+ * IN THE SOFTWARE. 
+ *
+ * (i.e. the MIT License)
  *
  * logicboard.c
  * Logic board view-related stuff for the curses-based emulator front-end
@@ -20,6 +40,20 @@ static int oldports[4];
 static unsigned char shiftregisters[4*4];
 static int audiotick = 0;
 static FILE *audioout = NULL;
+
+// for the 2x16 character display
+static unsigned char chardisplayram[0x80];
+static unsigned char chardisplaycgram[0x40];
+static int chardisplaycp = 0;
+static int chardisplayofs = 0;
+static int chardisplaydir = 1;
+static int chardisplayshift = 0;
+static int chardisplaydcb = 7;
+static int chardisplaychargen = 0;
+static int chardisplaydata = 0;
+static int chardisplay4bmode = 0;
+static int chardisplaytick = 0;
+static int chardisplaybusy = 0;
 
 static void closeaudio(void)
 {
@@ -62,13 +96,226 @@ void logicboard_tick(struct em8051 *aCPU)
                 shiftregisters[i + 12] |= (aCPU->mSFR[REG_P3] & (clockmask >> 1)) != 0;
             }
         }
-        oldports[0] = aCPU->mSFR[REG_P0];
-        oldports[1] = aCPU->mSFR[REG_P1];
-        oldports[2] = aCPU->mSFR[REG_P2];
-        oldports[3] = aCPU->mSFR[REG_P3];
     }
 
-    if (logicmode == 3)
+	if (logicmode == 3)
+	{
+		// 44780 -style character display
+
+		if (chardisplaybusy > 0)
+			chardisplaybusy--;
+
+		if ((oldports[3] & 0x80) != 0 &&
+			(aCPU->mSFR[REG_P3] & 0x80) == 0)	
+		{	// P3.7
+			// command pulse detected (E level drops from high to low)
+			if (chardisplay4bmode == 0)
+			{
+				chardisplaydata = aCPU->mSFR[REG_P1];
+			}
+			else
+			{
+				if ((aCPU->mSFR[REG_P3] & 0x20) == 0x20)
+				{	
+					if (!chardisplaytick)
+						p1out = (chardisplaydata << 4) & 0xf0;
+					else
+						p1out = (chardisplaydata << 0) & 0xf0;
+				}
+				else
+				{
+					if (!chardisplaytick)
+					{
+						chardisplaydata = (chardisplaydata & 0xf) | (aCPU->mSFR[REG_P1] & 0xf0);
+					}
+					else
+					{
+						chardisplaydata = (chardisplaydata & 0xf0) | ((aCPU->mSFR[REG_P1] & 0xf0) >> 4);
+					}
+				}
+				chardisplaytick = !chardisplaytick;
+			}
+
+			if (!chardisplaytick || !chardisplay4bmode)
+			{
+				if (aCPU->mSFR[REG_P3] & 0x40)
+				{ // P3.6
+					if (!chardisplaybusy)
+					{
+						// memory IO mode
+						if (chardisplaychargen == 0)
+						{
+							if (aCPU->mSFR[REG_P3] & 0x20)
+							{
+								// read from display
+								chardisplaydata = chardisplayram[chardisplaycp & 0x7f];
+								if (chardisplay4bmode)
+									p1out = chardisplaydata & 0xf0;
+								else
+									p1out = chardisplaydata;
+								chardisplaycp += chardisplaydir; 
+								if (chardisplayshift)
+									chardisplayofs += chardisplaydir;
+								// busy for 250 microseconds
+								chardisplaybusy = 250*opt_clock_hz / 12000000;
+							}
+							else
+							{
+								// write to display
+								chardisplayram[chardisplaycp & 0x7f] = chardisplaydata;
+								chardisplaycp += chardisplaydir; 
+								if (chardisplayshift)
+									chardisplayofs += chardisplaydir;
+								// busy for 250 microseconds
+								chardisplaybusy = 250*opt_clock_hz / 12000000;
+							}
+						}
+						else
+						{
+							// chargen mode
+							if (aCPU->mSFR[REG_P3] & 0x20)
+							{
+								// read from chargen ram
+								chardisplaydata = chardisplaycgram[chardisplaycp & 0x3f];
+								if (chardisplay4bmode)
+									p1out = chardisplaydata & 0xf0;
+								else
+									p1out = chardisplaydata;
+								chardisplaycp++; // assumed; not clear from data sheet
+								// busy for 250 microseconds
+								chardisplaybusy = 250*opt_clock_hz / 12000000;
+							}
+							else
+							{
+								// write to chargen ram
+								chardisplaycgram[chardisplaycp & 0x3f] = chardisplaydata;
+								chardisplaycp++;  // assumed: not clear from data sheet
+								// busy for 250 microseconds
+								chardisplaybusy = 250*opt_clock_hz / 12000000;
+							}
+						}
+					}
+				}
+				else
+				{
+					// instruction mode				
+					if (aCPU->mSFR[REG_P3] & 0x20)
+					{   // P3.5
+						chardisplaydata = chardisplaycp & 0x7f;
+						if (chardisplaybusy)
+							chardisplaydata |= 0x80;
+						if (chardisplay4bmode)
+							p1out = chardisplaydata & 0xf0;
+						else
+							p1out = chardisplaydata;
+						// doesn't cause busy states
+					}
+					else
+					if (chardisplaybusy)
+					{
+						// if busy, only let the user read the busy state.
+					}
+					else
+					if (chardisplaydata == 1)
+					{
+						// Clear display
+						for (i = 0; i < 0x80; i++)
+							chardisplayram[i] = 0x20;
+						chardisplaycp = 0;
+						chardisplayofs = 0;
+						chardisplaydir = 1; // based on HD44780U data sheet
+						// busy for 2 milliseconds
+						chardisplaybusy = 2*opt_clock_hz / 12000;
+					}
+					else
+					if ((chardisplaydata & (0xff & ~1)) == 2)
+					{
+						// return home
+						chardisplaycp = 0;
+						chardisplayofs = 0;
+						// busy for 200 microseconds
+						chardisplaybusy = 200*opt_clock_hz / 12000000;
+					}
+					else
+					if ((chardisplaydata & (0xff & ~3)) == 4)
+					{
+						// entry mode set.
+						if (chardisplaydata & 1)
+							chardisplayshift = 1;
+						else
+							chardisplayshift = 0;
+						if (chardisplaydata & 2)
+							chardisplaydir = 1;
+						else
+							chardisplaydir = -1;
+						// busy for 200 microseconds
+						chardisplaybusy = 200*opt_clock_hz / 12000000;
+					}
+					else
+					if ((chardisplaydata & (0xff & ~7)) == 8)
+					{
+						// display on/off setting.
+						chardisplaydcb = chardisplaydata & 0x7;
+						// busy for 200 microseconds
+						chardisplaybusy = 200*opt_clock_hz / 12000000;
+					}
+					else
+					if ((chardisplaydata & (0xff & ~0xf)) == 0x10)
+					{
+						// cursor or display shift.
+						if (chardisplaydata & 8)
+						{
+							// move cursor
+							if (chardisplaydata & 4)
+								chardisplaycp++;
+							else
+								chardisplaycp--;
+						}
+						else
+						{
+							// shift display
+							if (chardisplaydata & 4)
+								chardisplayofs++;
+							else
+								chardisplayofs--;
+						}
+						// busy for 200 microseconds
+						chardisplaybusy = 200*opt_clock_hz / 12000000;
+					}
+					else
+					if ((chardisplaydata & (0xff & ~0x1f)) == 0x20)
+					{
+						// function set (4/8 bit interface, font size). 
+						chardisplay4bmode = (chardisplaydata & 16) == 0;
+						chardisplaytick = 0;
+						// busy for 200 microseconds
+						chardisplaybusy = 200*opt_clock_hz / 12000000;
+					}
+					else
+					if ((chardisplaydata & (0xff & ~0x3f)) == 0x40)
+					{
+						// character gen address set. 
+						chardisplaychargen = 1;
+						// busy for 200 microseconds
+						chardisplaybusy = 200*opt_clock_hz / 12000000;
+					}
+					else
+					if ((chardisplaydata & (0xff & ~0x7f)) == 0x80)
+					{
+						// cursor position address set
+						chardisplaycp = chardisplaydata & 0x7f;
+						chardisplaychargen = 0;
+						// busy for 200 microseconds
+						chardisplaybusy = 200*opt_clock_hz / 12000000;
+					}
+				}
+			}
+		}
+		if (chardisplaybusy < 0)
+			chardisplaybusy = 0;
+	}
+
+    if (logicmode == 4)
     {
         if (audioout == NULL)
         {
@@ -156,9 +403,13 @@ void logicboard_tick(struct em8051 *aCPU)
         if (audiotick > opt_clock_hz / (44100 * 12))
         {
             fputc(aCPU->mSFR[REG_P3] & 0x80, audioout);
-            audiotick = 0;
+            audiotick -= opt_clock_hz / (44100 * 12);
         }
     }
+    oldports[0] = aCPU->mSFR[REG_P0];
+    oldports[1] = aCPU->mSFR[REG_P1];
+    oldports[2] = aCPU->mSFR[REG_P2];
+    oldports[3] = aCPU->mSFR[REG_P3];
 }
 
 static void logicboard_render_7segs(struct em8051 *aCPU)
@@ -186,8 +437,49 @@ static void logicboard_render_registers()
     mvprintw(10, 40, "P1.6/7: %02Xh     P3.6/7: %02Xh", shiftregisters[7], shiftregisters[15]);
 }
 
+static void logicboard_render_chardisplay()
+{
+	int i;	
+	mvprintw(2, 40, "[");
+	for (i = 0; i < 16; i++)
+	{
+		int c = chardisplayram[(i + chardisplayofs) & 0x7f];
+		if ((chardisplaydcb & 4) == 0) c = ' ';
+		if (c == 0) c = ' ';		
+		if (c < 32 || c > 126)
+			c = '?';
+		printw("%c", c);
+	}
+	printw("]");
+
+	mvprintw(3, 40, "[");
+	for (i = 0; i < 16; i++)
+	{
+		int c = chardisplayram[(i + chardisplayofs + 0x40) & 0x7f];
+		if ((chardisplaydcb & 4) == 0) c = ' ';
+		if (c == 0) c = ' ';
+		if (c < 32 || c > 126)
+			c = '?';
+		printw("%c", c);
+	}
+	printw("]");
+
+	
+	mvprintw(4, 40, "Display %3s, Cursor %3s", (chardisplaydcb & 4)?"on":"off", (chardisplaydcb & 2)?"on":"off");
+	mvprintw(5, 40, "Blinking %3s, 4bit %3s", (chardisplaydcb & 1)?"on":"off", (chardisplay4bmode & 1)?"on":"off");
+	mvprintw(6, 40, "4b tick:%d Busy:%-7d", chardisplaytick, chardisplaybusy);
+
+	mvprintw(10, 40, "P1.0-7 = DB0-7");
+	mvprintw(11, 40, "P3.7   = EN");
+	mvprintw(12, 40, "P3.6   = RS");
+	mvprintw(13, 40, "P3.5   = RW");
+}
+
 static void logicboard_entermode()
 {
+	int i;
+	for (i = 0; i < 0x80; i++)
+		chardisplayram[i] = 0x20;
 }
 
 static void logicboard_leavemode()
@@ -211,6 +503,17 @@ static void logicboard_leavemode()
         mvprintw(9, 40, "                           ");
         mvprintw(10, 40, "                           ");
         break;
+	case 3:
+		mvprintw(2, 40, "                  ");
+		mvprintw(3, 40, "                  ");
+		mvprintw(4, 40, "                       ");
+		mvprintw(5, 40, "                      ");
+		mvprintw(6, 40, "                      ");
+		mvprintw(10, 40, "              ");
+		mvprintw(11, 40, "           ");
+		mvprintw(12, 40, "           ");
+		mvprintw(13, 40, "           ");
+		break;
     }
 }
 
@@ -236,7 +539,7 @@ void logicboard_editor_keys(struct em8051 *aCPU, int ch)
         {
             logicboard_leavemode();
             logicmode++;
-            if (logicmode > 3) logicmode = 3;
+            if (logicmode > 4) logicmode = 4;
             logicboard_entermode();
         }
         break;
@@ -412,7 +715,10 @@ void logicboard_update(struct em8051 *aCPU)
     case 2:
         mvprintw(17, 4, "< 8bit shift registers >");
         break;
-    case 3:
+	case 3:
+		mvprintw(17, 4, "< 16x2 44780 display   >");
+		break;
+	case 4:
         mvprintw(17, 4, "< 1bit audio out (P3.7)>");
         break;
     }
@@ -428,6 +734,9 @@ void logicboard_update(struct em8051 *aCPU)
     case 2:
         logicboard_render_registers();
         break;
+	case 3:
+		logicboard_render_chardisplay();
+		break;
     }
 
     refresh();

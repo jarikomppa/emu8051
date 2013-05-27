@@ -1,6 +1,26 @@
 /* 8051 emulator 
  * Copyright 2006 Jari Komppa
- * Released under GPL
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining 
+ * a copy of this software and associated documentation files (the 
+ * "Software"), to deal in the Software without restriction, including 
+ * without limitation the rights to use, copy, modify, merge, publish, 
+ * distribute, sublicense, and/or sell copies of the Software, and to 
+ * permit persons to whom the Software is furnished to do so, subject 
+ * to the following conditions: 
+ *
+ * The above copyright notice and this permission notice shall be included 
+ * in all copies or substantial portions of the Software. 
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
+ * IN THE SOFTWARE. 
+ *
+ * (i.e. the MIT License)
  *
  * popups.c
  * Popup windows for the curses-based emulator front-end
@@ -421,7 +441,7 @@ void emu_help(struct em8051 *aCPU)
     wrefresh(exc);
 
     wmove(exc, 2, 2);
-    waddstr(exc, "8051 Emulator v. 0.6 - http://iki.fi/sol/");
+    waddstr(exc, "8051 Emulator v. 0.7 - http://iki.fi/sol/");
     wmove(exc, 3, 2);
     waddstr(exc, "Copyright (c) 2006 Jari Komppa");
     wmove(exc, 13, 22);
@@ -441,7 +461,7 @@ void emu_help(struct em8051 *aCPU)
     mvwaddstr(exc, 5, 32, "shift-q - Quit");
     mvwaddstr(exc, 6, 32, "cursors - Move cursor");
     mvwaddstr(exc, 7, 32, "0-9,a-f - Adjust values");
-    mvwaddstr(exc, 8, 36, "tab - Switch mem editor modes");
+    mvwaddstr(exc, 8, 36, "tab - Switch editor focus");
     mvwaddstr(exc, 9, 36, "end - Reset tick/time counter");
     mvwaddstr(exc, 10, 38, "k - Set or clear breakpoint");
     mvwaddstr(exc, 11, 38, "g - Go to address (adjust PC)");

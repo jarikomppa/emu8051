@@ -1,6 +1,26 @@
 /* 8051 emulator core
  * Copyright 2006 Jari Komppa
- * Released under LGPL
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining 
+ * a copy of this software and associated documentation files (the 
+ * "Software"), to deal in the Software without restriction, including 
+ * without limitation the rights to use, copy, modify, merge, publish, 
+ * distribute, sublicense, and/or sell copies of the Software, and to 
+ * permit persons to whom the Software is furnished to do so, subject 
+ * to the following conditions: 
+ *
+ * The above copyright notice and this permission notice shall be included 
+ * in all copies or substantial portions of the Software. 
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
+ * IN THE SOFTWARE. 
+ *
+ * (i.e. the MIT License)
  *
  * opcodes.c
  * 8051 opcode simulation functions
@@ -1586,8 +1606,15 @@ static int xchd_a_indir_rx(struct em8051 *aCPU)
 static int movx_a_indir_dptr(struct em8051 *aCPU)
 {
     int dptr = (aCPU->mSFR[REG_DPH] << 8) | aCPU->mSFR[REG_DPL];
-    if (aCPU->mExtData)
-        ACC = aCPU->mExtData[dptr & (aCPU->mExtDataSize - 1)];
+    if (aCPU->xread)
+    {
+        ACC = aCPU->xread(aCPU, dptr);
+    }
+    else
+    {
+        if (aCPU->mExtData)
+            ACC = aCPU->mExtData[dptr & (aCPU->mExtDataSize - 1)];
+    }
     PC++;
     return 1;
 }
@@ -1595,7 +1622,15 @@ static int movx_a_indir_dptr(struct em8051 *aCPU)
 static int movx_a_indir_rx(struct em8051 *aCPU)
 {
     int address = INDIR_RX_ADDRESS;
-    ACC = aCPU->mExtData[address];
+    if (aCPU->xread)
+    {
+        ACC = aCPU->xread(aCPU, address);
+    }
+    else
+    {
+        if (aCPU->mExtData)
+            ACC = aCPU->mExtData[address & (aCPU->mExtDataSize - 1)];
+    }
 
     PC++;
     return 1;
@@ -1648,8 +1683,16 @@ static int mov_a_indir_rx(struct em8051 *aCPU)
 static int movx_indir_dptr_a(struct em8051 *aCPU)
 {
     int dptr = (aCPU->mSFR[REG_DPH] << 8) | aCPU->mSFR[REG_DPL];
-    if (aCPU->mExtData)
-        aCPU->mExtData[dptr & (aCPU->mExtDataSize - 1)] = ACC;
+    if (aCPU->xwrite)
+    {
+        aCPU->xwrite(aCPU, dptr, ACC);
+    }
+    else
+    {
+        if (aCPU->mExtData)
+            aCPU->mExtData[dptr & (aCPU->mExtDataSize - 1)] = ACC;
+    }
+
     PC++;
     return 1;
 }
@@ -1657,7 +1700,17 @@ static int movx_indir_dptr_a(struct em8051 *aCPU)
 static int movx_indir_rx_a(struct em8051 *aCPU)
 {
     int address = INDIR_RX_ADDRESS;
-    aCPU->mExtData[address] = ACC;
+
+    if (aCPU->xwrite)
+    {
+        aCPU->xwrite(aCPU, address, ACC);
+    }
+    else
+    {
+        if (aCPU->mExtData)
+            aCPU->mExtData[address & (aCPU->mExtDataSize - 1)] = ACC;
+    }
+
     PC++;
     return 1;
 }
