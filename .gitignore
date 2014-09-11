@@ -11,3 +11,12 @@
 *.lai
 *.la
 *.a
+
+#binary file
+emu
+
+#editor temp files
+\#*
+.\#*
+*~
+~*
