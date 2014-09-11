@@ -1,3 +1,5 @@
+#sudo apt-get install libncurses5 libncurses5-dev
+
 HEADERS = emu8051.h  emulator.h
 OBJ = core.o  disasm.o  emu.o  logicboard.o  mainview.o  memeditor.o  opcodes.o  options.o  popups.o
 
