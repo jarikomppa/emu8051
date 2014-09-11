@@ -1,24 +1,24 @@
-/* 8051 emulator 
+/* 8051 emulator
  * Copyright 2006 Jari Komppa
  *
- * Permission is hereby granted, free of charge, to any person obtaining 
- * a copy of this software and associated documentation files (the 
- * "Software"), to deal in the Software without restriction, including 
- * without limitation the rights to use, copy, modify, merge, publish, 
- * distribute, sublicense, and/or sell copies of the Software, and to 
- * permit persons to whom the Software is furnished to do so, subject 
- * to the following conditions: 
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject
+ * to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included 
- * in all copies or substantial portions of the Software. 
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
  *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
- * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
- * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
- * IN THE SOFTWARE. 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
  *
  * (i.e. the MIT License)
  *
@@ -37,7 +37,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "curses.h"
+#include <curses.h>
 #include "emu8051.h"
 #include "emulator.h"
 
@@ -92,7 +92,7 @@ void emu_sleep(int value)
 }
 
 void setSpeed(int speed, int runmode)
-{   
+{
     switch (speed)
     {
     case 7:
@@ -124,16 +124,16 @@ void setSpeed(int speed, int runmode)
     if (runmode == 0)
     {
         slk_set(4, "r)un", 0);
-        slk_refresh();        
+        slk_refresh();
         nocbreak();
         cbreak();
-        nodelay(stdscr, FALSE);        
+        nodelay(stdscr, FALSE);
         return;
     }
     else
     {
         slk_set(4, "r)unning", 0);
-        slk_refresh();        
+        slk_refresh();
     }
 
     if (speed < 4)
@@ -166,7 +166,7 @@ void setSpeed(int speed, int runmode)
 
 
 int emu_sfrread(struct em8051 *aCPU, int aRegister)
-{    
+{
     int outputbyte = -1;
 
     if (view == LOGICBOARD_VIEW)
@@ -221,11 +221,11 @@ int emu_sfrread(struct em8051 *aCPU, int aRegister)
         }
         // option: dump random values for output bits with
         // output latches set to 0
-        return outputbyte & aCPU->mSFR[aRegister - 0x80] | 
+        return outputbyte & aCPU->mSFR[aRegister - 0x80] |
             (rand() & ~aCPU->mSFR[aRegister - 0x80]);
-    }    
+    }
     return aCPU->mSFR[aRegister - 0x80];
-    
+
 }
 
 void refreshview(struct em8051 *aCPU)
@@ -268,7 +268,7 @@ void change_view(struct em8051 *aCPU, int changeto)
     }
 }
 
-int main(int parc, char ** pars) 
+int main(int parc, char ** pars)
 {
     int ch = 0;
     struct em8051 emu;
@@ -287,7 +287,7 @@ int main(int parc, char ** pars)
     emu.sfrread      = &emu_sfrread;
     emu.xread = NULL;
     emu.xwrite = NULL;
-    reset(&emu, 1);    
+    reset(&emu, 1);
 
     if (parc > 1)
     {
@@ -424,7 +424,7 @@ int main(int parc, char ** pars)
 	    fprintf(stderr, "Error initialising ncurses.\n");
 	    exit(EXIT_FAILURE);
     }
- 
+
     slk_set(1, "h)elp", 0);
     slk_set(2, "l)oad", 0);
     slk_set(3, "spc=step", 0);
@@ -433,7 +433,7 @@ int main(int parc, char ** pars)
     slk_set(7, "home=rst", 0);
     slk_set(8, "s-Q)quit", 0);
     setSpeed(speed, runmode);
-   
+
 
     //  Switch of echoing and enable keypad (for arrow keys etc)
 
