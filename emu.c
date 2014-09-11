@@ -37,7 +37,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef __linux__
 #include <curses.h>
+#else
+#include "curses.h"
+#endif
 #include "emu8051.h"
 #include "emulator.h"
 
