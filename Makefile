@@ -16,4 +16,4 @@ CFLAGS = -g -Wall -Wextra
 emu: $(OBJ)
 	$(CC) $(CFLAGS) $(OBJ) -o emu -lcurses
 clean:
-	-rm -rf *.o
+	-rm -rf *.o emu
