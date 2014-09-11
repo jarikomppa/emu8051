@@ -14,3 +14,8 @@
 
 #binary file
 emu
+
+#editor temp files
+\#*
+.\#*
+*~
