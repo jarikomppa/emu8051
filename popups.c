@@ -182,7 +182,7 @@ void emu_load(struct em8051 *aCPU)
                 wrefresh(exc);
             }
         }
-        if (ch == KEY_DC || ch == 8)
+        if (ch == KEY_DC || ch == 8 || ch == KEY_BACKSPACE)
         {
             if (pos > 0)
             {
@@ -295,7 +295,7 @@ int emu_readvalue(struct em8051 *aCPU, const char *aPrompt, int aOldvalue, int a
                 waddch(exc,ch);
             }
         }
-        if (ch == KEY_DC || ch == 8)
+        if (ch == KEY_DC || ch == 8 || ch == KEY_BACKSPACE)
         {
             if (pos > 0)
             {
@@ -351,7 +351,7 @@ int emu_readhz(struct em8051 *aCPU, const char *aPrompt, int aOldvalue)
                 waddch(exc,ch);
             }
         }
-        if (ch == KEY_DC || ch == 8)
+        if (ch == KEY_DC || ch == 8 || ch == KEY_BACKSPACE)
         {
             if (pos > 0)
             {
