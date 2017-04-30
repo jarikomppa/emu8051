@@ -26,6 +26,8 @@
  * General emulation functions
  */
 
+#define T0_MODE3_MASK (TMODMASK_M0_0 | TMODMASK_M1_0)
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -224,9 +226,10 @@ static void timer_tick(struct em8051 *aCPU)
                     {
                         // TH1 overflowed; set bit
                         // Only update TF1 if timer 0 is not in "mode 3"
-                        if (!(aCPU->mSFR[REG_TMOD] & (TMODMASK_M0_0 | TMODMASK_M1_0)))
-                            aCPU->mSFR[REG_TCON] |= TCONMASK_TF1;
-                    }
+                    if (!((aCPU->mSFR[REG_TMOD] & T0_MODE3_MASK ) == T0_MODE3_MASK))
+                        aCPU->mSFR[REG_TCON] |= TCONMASK_TF1;
+
+                    } 
                 }
                 break;
             case TMODMASK_M0_1: // 16-bit timer/counter
@@ -243,8 +246,10 @@ static void timer_tick(struct em8051 *aCPU)
                     {
                         // TH1 overflowed; set bit
                         // Only update TF1 if timer 0 is not in "mode 3"
-                        if (!(aCPU->mSFR[REG_TMOD] & (TMODMASK_M0_0 | TMODMASK_M1_0)))
+              
+                        if (!((aCPU->mSFR[REG_TMOD] & T0_MODE3_MASK)  == T0_MODE3_MASK))
                             aCPU->mSFR[REG_TCON] |= TCONMASK_TF1;
+
                     }
                 }
                 break;
@@ -257,8 +262,11 @@ static void timer_tick(struct em8051 *aCPU)
                     // TL0 overflowed; reload
                     aCPU->mSFR[REG_TL1] = aCPU->mSFR[REG_TH1];
                     // Only update TF1 if timer 0 is not in "mode 3"
-                    if (!(aCPU->mSFR[REG_TMOD] & (TMODMASK_M0_0 | TMODMASK_M1_0)))
+                    
+            
+                    if (!((aCPU->mSFR[REG_TMOD] & T0_MODE3_MASK ) == T0_MODE3_MASK))
                         aCPU->mSFR[REG_TCON] |= TCONMASK_TF1;
+                    
                 }
                 break;
             default: // disabled
