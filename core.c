@@ -496,6 +496,25 @@ int readbyte(FILE * f)
     return strtol(data, NULL, 16);
 }
 
+int load_raw(struct em8051 *aCPU, char *aFilename)
+{
+    FILE *f;
+    if (aFilename == 0 || aFilename[0] == 0)
+        return -1;
+    f = fopen(aFilename, "r");
+    if (!f) return -1;
+
+    int address = 0;
+    while (!feof(f))
+    {
+	int data = readbyte(f);
+        aCPU->mCodeMem[address] = data;
+	address += 1;
+    }
+    fclose(f);
+    return 0;
+}
+
 int load_obj(struct em8051 *aCPU, char *aFilename)
 {
     FILE *f;    

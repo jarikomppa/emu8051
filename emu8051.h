@@ -98,6 +98,9 @@ int tick(struct em8051 *aCPU);
 // Returns length of opcode.
 int decode(struct em8051 *aCPU, int aPosition, unsigned char *aBuffer);
 
+// Load a raw memory dump object file. Returns negative for errors.
+int load_raw(struct em8051 *aCPU, char *aFilename);
+
 // Load an intel hex format object file. Returns negative for errors.
 int load_obj(struct em8051 *aCPU, char *aFilename);
 

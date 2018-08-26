@@ -309,6 +309,16 @@ int main(int parc, char ** pars)
                     opt_step_instruction = 1;
                 }
                 else
+                if (strcmp("raw",pars[i]+1) == 0)
+                {
+                    opt_raw = 1;
+                }
+                else
+                if (strcmp("r",pars[i]+1) == 0)
+                {
+                    opt_raw = 1;
+                }
+                else
                 if (strcmp("noexc_iret_sp",pars[i]+1) == 0)
                 {
                     opt_exception_iret_sp = 0;
@@ -392,6 +402,7 @@ int main(int parc, char ** pars)
                         "emu8051 [options] [filename]\n\n"
                         "Both the filename and options are optional. Available options:\n\n"
                         "Option            Alternate   description\n"
+                        "-raw              -r          Load a raw flash dump\n"
                         "-step_instruction -si         Step one instruction at a time\n"
                         "-noexc_iret_sp    -nosp       Disable sp iret exception\n"
                         "-noexc_iret_acc   -noacc      Disable acc iret exception\n"
@@ -408,9 +419,12 @@ int main(int parc, char ** pars)
             }
             else
             {
-                if (load_obj(&emu, pars[i]) != 0)
+                int load_result = opt_raw ? load_raw(&emu, pars[i]) :
+                                            load_obj(&emu, pars[i]);
+                if (load_result != 0)
                 {
-                    printf("File '%s' load failure\n\n",pars[i]);
+                    printf("File '%s' load failure, err %d\n\n",
+                           pars[i], load_result);
                     return -1;
                 }
                 else
