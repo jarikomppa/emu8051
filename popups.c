@@ -196,7 +196,7 @@ void emu_load(struct em8051 *aCPU)
         }
     }
 
-    result = load_obj(aCPU, filename);
+    result = opt_raw ? load_raw(aCPU, filename) : load_obj(aCPU, filename);
     delwin(exc);
     refreshview(aCPU);
 

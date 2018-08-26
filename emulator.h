@@ -78,6 +78,7 @@ int opt_clock_select;
 int opt_clock_hz;
 int opt_step_instruction;
 int opt_input_outputlow;
+int opt_raw;
 
 
 
