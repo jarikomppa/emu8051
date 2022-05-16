@@ -217,7 +217,7 @@ void bitaddr_memonic(int aValue, char *aBuffer)
 static int disasm_ajmp_offset(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
     sprintf(aBuffer,"AJMP  #%04Xh",
-        (aPosition + 2) & 0xf800 |
+        ((aPosition + 2) & 0xf800) |
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)] | 
         ((aCPU->mCodeMem[(aPosition)&(aCPU->mCodeMemSize-1)] & 0xe0) << 3));
     return 2;
@@ -272,7 +272,7 @@ static int disasm_jbc_bitaddr_offset(struct em8051 *aCPU, int aPosition, char *a
 static int disasm_acall_offset(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
     sprintf(aBuffer,"ACALL %04Xh",
-        (aPosition + 2) & 0xf800 |
+        ((aPosition + 2) & 0xf800) |
         aCPU->mCodeMem[(aPosition + 1)&(aCPU->mCodeMemSize-1)] | 
         ((aCPU->mCodeMem[(aPosition)&(aCPU->mCodeMemSize-1)] & 0xe0) << 3));
     return 2;

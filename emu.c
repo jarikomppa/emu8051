@@ -225,7 +225,7 @@ int emu_sfrread(struct em8051 *aCPU, int aRegister)
         }
         // option: dump random values for output bits with
         // output latches set to 0
-        return outputbyte & aCPU->mSFR[aRegister - 0x80] |
+        return (outputbyte & aCPU->mSFR[aRegister - 0x80]) |
             (rand() & ~aCPU->mSFR[aRegister - 0x80]);
     }
     return aCPU->mSFR[aRegister - 0x80];
