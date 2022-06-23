@@ -1,19 +1,33 @@
-#sudo apt-get install libncurses5 libncurses5-dev
+#####################################################################
+# Config
+#####################################################################
+BIN := emu
 
-HEADERS = emu8051.h  emulator.h
-OBJ = core.o  disasm.o  emu.o  logicboard.o  mainview.o  memeditor.o  opcodes.o  options.o  popups.o
+CFLAGS += -O2
+CFLAGS += -pipe
+CFLAGS += -g -Wall -Wextra -Wno-unused-parameter
 
-CC = gcc
-CCPP = g++
-CFLAGS = -g -Wall -Wextra
+# Uncomment to activate LTO
+#CFLAGS += -flto
+
+LDLIBS += -lcurses
+
+#####################################################################
+# Rules
+#####################################################################
+HEADERS := $(wildcard *.h)
+SRC := $(wildcard *.c)
+OBJ := $(SRC:.c=.o)
 
 %.o: %.c $(HEADERS)
-	$(CC) $(CLFLAGS)-c -o $@ $< $(CFLAGS)
+	 $(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
 
-# %.o: %.cpp $(HEADERS)
-# 	$(CCPP) $(CLFLAGS)-c -o $@ $< $(CFLAGS)
+$(BIN): $(OBJ)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
-emu: $(OBJ)
-	$(CC) $(CFLAGS) $(OBJ) -o emu -lcurses
 clean:
-	-rm -rf *.o emu
+	-rm -f $(BIN) $(OBJ)
+
+.PHONY: clean all
+
+all: $(BIN)
