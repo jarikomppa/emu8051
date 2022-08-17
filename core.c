@@ -382,6 +382,7 @@ void handle_interrupts(struct em8051 *aCPU)
         return; 
 
     // some interrupt occurs; perform LCALL
+    aCPU->mSFR[REG_PCON] &= ~0x01; // clear idle flag
     push_to_stack(aCPU, aCPU->mPC & 0xff);
     push_to_stack(aCPU, aCPU->mPC >> 8);
     aCPU->mPC = dest_ip;
@@ -432,7 +433,13 @@ int tick(struct em8051 *aCPU)
 
     if (aCPU->mTickDelay == 0)
     {
-        aCPU->mTickDelay = aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemSize - 1)]](aCPU);
+        // IDL activate the idle mode to save power
+        int is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
+        if (is_idle) {
+            aCPU->mTickDelay = 1;
+        } else {
+            aCPU->mTickDelay = aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemSize - 1)]](aCPU);
+        }
         ticked = 1;
         // update parity bit
         v = aCPU->mSFR[REG_ACC];
@@ -449,6 +456,11 @@ int tick(struct em8051 *aCPU)
 
 int decode(struct em8051 *aCPU, int aPosition, unsigned char *aBuffer)
 {
+    int is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
+    if (is_idle) {
+        sprintf(aBuffer, "IDLE");
+        return 0;
+    }
     return aCPU->dec[aCPU->mCodeMem[aPosition & (aCPU->mCodeMemSize - 1)]](aCPU, aPosition, aBuffer);
 }
 
