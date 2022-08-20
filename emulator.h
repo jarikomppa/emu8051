@@ -65,9 +65,6 @@ extern int p1out;
 extern int p2out;
 extern int p3out;
 
-// Out Serial
-extern char serial_out[];
-
 // current clock count
 unsigned int clocks;
 

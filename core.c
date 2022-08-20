@@ -423,8 +423,17 @@ int tick(struct em8051 *aCPU)
 
     // Handle Serial
     if (aCPU->mSFR[REG_SBUF]) {
-	    printf("%c", aCPU->mSFR[REG_SBUF]);
-	    aCPU->mSFR[REG_SBUF] = 0;
+	    if (aCPU->remaining_bits_to_send) {
+		    aCPU->remaining_bits_to_send --;
+	    } else
+		    aCPU->remaining_bits_to_send = 8;
+
+	    if (! aCPU->remaining_bits_to_send) {
+		    aCPU->serial_out[aCPU->serial_out_idx] = aCPU->mSFR[REG_SBUF];
+		    aCPU->serial_out_idx = (aCPU->serial_out_idx + 1) % sizeof(aCPU->serial_out);
+		    aCPU->mSFR[REG_SBUF] = 0; // End of transmission !
+		    aCPU->mSFR[REG_SCON] |= (1<<1); // Set TI bit
+	    }
     }
 
     // Interrupts are sent if the following cases are not true:

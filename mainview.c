@@ -599,7 +599,7 @@ void mainview_update(struct em8051 *aCPU)
     // convert the buffer for visibility
     char serial_buffer[28];
     for (size_t i = 0; i < sizeof(serial_buffer); i ++) {
-	    char c = serial_out[i];
+	    char c = aCPU->serial_out[i];
 	    serial_buffer[i] = isprint(c) ? c : '_';
     }
     wprintw(miscview, "Serial : %28s", serial_buffer);

@@ -82,6 +82,11 @@ struct em8051
     int int_a[2];
     int int_psw[2];
     int int_sp[2];
+
+    // Internal handling of UART
+    char serial_out[32];
+    int serial_out_idx;
+    int remaining_bits_to_send;
 };
 
 // set the emulator into reset state. Must be called before tick(), as

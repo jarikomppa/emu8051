@@ -63,9 +63,6 @@ unsigned int icount = 0;
 // current clock count
 unsigned int clocks = 0;
 
-// Serial output
-char serial_out[32];
-
 // currently active view
 int view = MAIN_VIEW;
 
