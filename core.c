@@ -421,6 +421,12 @@ int tick(struct em8051 *aCPU)
         aCPU->mTickDelay--;
     }
 
+    // Handle Serial
+    if (aCPU->mSFR[REG_SBUF]) {
+	    printf("%c", aCPU->mSFR[REG_SBUF]);
+	    aCPU->mSFR[REG_SBUF] = 0;
+    }
+
     // Interrupts are sent if the following cases are not true:
     // 1. interrupt of equal or higher priority is in progress (tested inside function)
     // 2. current cycle is not the final cycle of instruction (tickdelay = 0)
