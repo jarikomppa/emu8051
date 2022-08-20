@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "curses.h"
 #include "emu8051.h"
 #include "emulator.h"
@@ -593,7 +594,15 @@ void mainview_update(struct em8051 *aCPU)
     werase(miscview);
     wprintw(miscview, "\nCycles :% 10u\n", clocks);
     wprintw(miscview, "Time   :% 14.3fms\n", 1000.0f * clocks * (1.0f/opt_clock_hz));
-    wprintw(miscview, "HW     : Super8051 @%0.1fMHz", opt_clock_hz / (1000*1000.0f));
+    wprintw(miscview, "HW     : Super8051 @%0.1fMHz\n", opt_clock_hz / (1000*1000.0f));
+
+    // convert the buffer for visibility
+    char serial_buffer[28];
+    for (size_t i = 0; i < sizeof(serial_buffer); i ++) {
+	    char c = serial_out[i];
+	    serial_buffer[i] = isprint(c) ? c : '_';
+    }
+    wprintw(miscview, "Serial : %28s", serial_buffer);
 
     werase(ramview);
     for (i = 0; i < 7; i++)
