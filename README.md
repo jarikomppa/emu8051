@@ -71,3 +71,13 @@ Current features include:
 - Support for exceptions on invalid instructions, odd stack behavior, and messing up important registers in interrupts. One breakpoint is also supported.
 - The emulator performs callbacks on register area or external memory read/write, which can be used to implement simulation of new special features or whatever is connected to the IO ports.
 - Timer 0 and 1 modes 0, 1, 2 and 3, as well as interrupt priorities.
+
+Install
+=======
+
+You need to install the ncurses lib development files, which is the only dependency.
+
+On Debian/Ubuntu it is simply done as
+
+    sudo apt-get install libncurses5 libncurses5-dev
+
