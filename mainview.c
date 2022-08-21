@@ -596,13 +596,16 @@ void mainview_update(struct em8051 *aCPU)
     wprintw(miscview, "Time   :% 14.3fms\n", 1000.0f * clocks * (1.0f/opt_clock_hz));
     wprintw(miscview, "HW     : Super8051 @%0.1fMHz\n", opt_clock_hz / (1000*1000.0f));
 
-    // convert the buffer for visibility
-    char serial_buffer[28];
+    // convert the buffer to printable chars
+    char serial_buffer[sizeof(aCPU->serial_out)];
     for (size_t i = 0; i < sizeof(serial_buffer); i ++) {
-	    char c = aCPU->serial_out[i];
-	    serial_buffer[i] = isprint(c) ? c : '_';
+        char c = aCPU->serial_out[i];
+        serial_buffer[i] = isprint(c) ? c : '_';
     }
-    wprintw(miscview, "Serial : %28s", serial_buffer);
+    {
+        char c = aCPU->mSFR[REG_SBUF]; c = isprint(c) ? c : '_';
+        wprintw(miscview, "S%d %c=%02x: %18s", aCPU->serial_out_remaining_bits, c, aCPU->mSFR[REG_SBUF], serial_buffer);
+    }
 
     werase(ramview);
     for (i = 0; i < 7; i++)

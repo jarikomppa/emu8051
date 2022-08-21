@@ -84,9 +84,10 @@ struct em8051
     int int_sp[2];
 
     // Internal handling of UART
-    char serial_out[32];
+    char serial_out[18]; // The shown size is only 18 chars
     int serial_out_idx;
-    int remaining_bits_to_send;
+    int serial_out_remaining_bits;
+    int serial_interrupt_trigger;
 };
 
 // set the emulator into reset state. Must be called before tick(), as
