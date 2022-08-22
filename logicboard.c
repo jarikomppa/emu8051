@@ -35,7 +35,6 @@
 
 static int position;
 static int logicmode = 0;
-static int portmode = 0;
 static int oldports[4];
 static unsigned char shiftregisters[4*4];
 static int audiotick = 0;

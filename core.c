@@ -465,7 +465,7 @@ int tick(struct em8051 *aCPU)
     return ticked;
 }
 
-int decode(struct em8051 *aCPU, int aPosition, unsigned char *aBuffer)
+int decode(struct em8051 *aCPU, int aPosition, char *aBuffer)
 {
     int is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
     if (is_idle) {

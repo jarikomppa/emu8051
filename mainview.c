@@ -388,6 +388,7 @@ void mainview_editor_keys(struct em8051 *aCPU, int ch)
 
     switch (memmode)
     {
+    default:
     case 0:
     case 1:
     case 2:
@@ -421,9 +422,9 @@ void mainview_editor_keys(struct em8051 *aCPU, int ch)
             else
             {
                 if (cursorpos & 1)
-                    setregoutput(aCPU, cursorpos / 2, getregoutput(aCPU, cursorpos / 2) & 0xf0 | insert_value);
+                    setregoutput(aCPU, cursorpos / 2, (getregoutput(aCPU, cursorpos / 2) & 0xf0) | insert_value);
                 else
-                    setregoutput(aCPU, cursorpos / 2, getregoutput(aCPU, cursorpos / 2) & 0x0f | (insert_value << 4));
+                    setregoutput(aCPU, cursorpos / 2, (getregoutput(aCPU, cursorpos / 2) & 0x0f) | (insert_value << 4));
             }
             cursorpos++;
             if (cursorpos > 23)
@@ -493,7 +494,7 @@ void refresh_regoutput(struct em8051 *aCPU, int cursor)
 
 void mainview_update(struct em8051 *aCPU)
 {
-    int bytevalue;
+    int bytevalue = 0;
     int i;
 
     int opcode_bytes;
