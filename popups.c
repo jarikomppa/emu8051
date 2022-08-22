@@ -381,7 +381,7 @@ int emu_reset(struct em8051 *aCPU)
 
     runmode = 0;
     setSpeed(speed, runmode);
-    exc = subwin(stdscr, 7, 60, (LINES-7)/2, (COLS-60)/2);
+    exc = subwin(stdscr, 9, 60, (LINES-9)/2, (COLS-60)/2);
     wattron(exc,A_REVERSE);
     werase(exc);
     box(exc,ACS_VLINE,ACS_HLINE);
@@ -395,6 +395,8 @@ int emu_reset(struct em8051 *aCPU)
     waddstr(exc, "R)eset (init regs, set PC to zero)");
     wmove(exc, 4, 2);
     waddstr(exc, "W)ipe (init regs, set PC to zero, clear memory)");
+    wmove(exc, 6, 2);
+    waddstr(exc, "z/Z from main screen are shortcuts to HOME+R or HOME+W");
     wrefresh(exc);
 
     result = 0;

@@ -534,6 +534,14 @@ int main(int parc, char ** pars)
                 ticked = 1;
             }
             break;
+        case 'z':
+	    // Equivalent of "R)eset (init regs, set PC to zero)"
+	    reset(&emu, 0);
+	    break;
+        case 'Z':
+	    // Equivalent of "W)ipe (init regs, set PC to zero, clear memory)"
+	    reset(&emu, 1);
+	    break;
         case KEY_END:
             clocks = 0;
             ticked = 1;
