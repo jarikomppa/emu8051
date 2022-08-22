@@ -82,6 +82,12 @@ struct em8051
     int int_a[2];
     int int_psw[2];
     int int_sp[2];
+
+    // Internal handling of UART
+    char serial_out[18]; // The shown size is only 18 chars
+    int serial_out_idx;
+    int serial_out_remaining_bits;
+    int serial_interrupt_trigger;
 };
 
 // set the emulator into reset state. Must be called before tick(), as
@@ -130,6 +136,7 @@ enum SFR_REGS
     REG_TH1 = 0x8D - 0x80,
     REG_TL1 = 0x8B - 0x80,
     REG_SCON = 0x98 - 0x80,
+    REG_SBUF = 0x99 - 0x80,
     REG_PCON = 0x87 - 0x80
 };
 

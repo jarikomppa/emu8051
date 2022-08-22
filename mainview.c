@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "curses.h"
 #include "emu8051.h"
 #include "emulator.h"
@@ -146,11 +147,11 @@ void build_main_view(struct em8051 *aCPU)
     scrollok(regoutput, TRUE);
 
 
-    rambox = subwin(stdscr, 10, 31, 0, 0);
+    rambox = subwin(stdscr, 9, 31, 0, 0);
     box(rambox,0,0);
     mvwaddstr(rambox, 0, 2, "m)");
     mvwaddstr(rambox, 0, 4, memtypes[memmode]);
-    ramview = subwin(rambox, 8, 29, 1, 1);
+    ramview = subwin(rambox, 7, 29, 1, 1);
 
     stackbox = subwin(stdscr, 16, 6, 0, 31);
     box(stackbox,0,0);
@@ -183,9 +184,9 @@ void build_main_view(struct em8051 *aCPU)
     spregoutput = subwin(spregbox, 6, 40, 9, 39);
     scrollok(spregoutput, TRUE);
 
-    miscbox = subwin(stdscr, 6, 31, 10, 0);
+    miscbox = subwin(stdscr, 7, 31, 9, 0);
     box(miscbox,0,0);
-    miscview = subwin(miscbox, 4, 28, 11, 2);
+    miscview = subwin(miscbox, 5, 28, 10, 2);
     
     refresh();
     wrefresh(codeoutput);
@@ -593,10 +594,21 @@ void mainview_update(struct em8051 *aCPU)
     werase(miscview);
     wprintw(miscview, "\nCycles :% 10u\n", clocks);
     wprintw(miscview, "Time   :% 14.3fms\n", 1000.0f * clocks * (1.0f/opt_clock_hz));
-    wprintw(miscview, "HW     : Super8051 @%0.1fMHz", opt_clock_hz / (1000*1000.0f));
+    wprintw(miscview, "HW     : Super8051 @%0.1fMHz\n", opt_clock_hz / (1000*1000.0f));
+
+    // convert the buffer to printable chars
+    char serial_buffer[sizeof(aCPU->serial_out)];
+    for (size_t i = 0; i < sizeof(serial_buffer); i ++) {
+        char c = aCPU->serial_out[i];
+        serial_buffer[i] = isprint(c) ? c : '_';
+    }
+    {
+        char c = aCPU->mSFR[REG_SBUF]; c = isprint(c) ? c : '_';
+        wprintw(miscview, "S%d %c=%02x: %18s", aCPU->serial_out_remaining_bits, c, aCPU->mSFR[REG_SBUF], serial_buffer);
+    }
 
     werase(ramview);
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < 7; i++)
     {
         wprintw(ramview,"%04X %02X %02X %02X %02X %02X %02X %02X %02X\n", 
             i*8+memoffset, 
