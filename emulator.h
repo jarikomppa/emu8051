@@ -60,10 +60,7 @@ extern int speed;
 extern int view;
 
 // old port out values
-extern int p0out;
-extern int p1out;
-extern int p2out;
-extern int p3out;
+extern int pout[];
 
 // current clock count
 extern unsigned int clocks;
