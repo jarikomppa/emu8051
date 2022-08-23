@@ -164,12 +164,9 @@ void setSpeed(int speed, int runmode)
 }
 
 
-void emu_sfrwrite(struct em8051 *aCPU, int aRegister)
+void emu_sfrwrite_SBUF(struct em8051 *aCPU, int aRegister)
 {
-    if (aRegister == REG_SBUF + 0x80)
-    {
-	    aCPU->serial_out_remaining_bits = 8;
-    }
+    aCPU->serial_out_remaining_bits = 8;
 }
 
 int emu_sfrread(struct em8051 *aCPU, int aRegister)
@@ -291,10 +288,18 @@ int main(int parc, char ** pars)
     emu.mUpperData   = malloc(128);
     emu.mSFR         = malloc(128);
     emu.except       = &emu_exception;
-    emu.sfrread      = &emu_sfrread;
-    emu.sfrwrite     = &emu_sfrwrite;
+    emu.sfrread      = malloc(128 * sizeof(em8051sfrread));
+    emu.sfrwrite     = malloc(128 * sizeof(em8051sfrwrite));
     emu.xread = NULL;
     emu.xwrite = NULL;
+
+    emu.sfrwrite[REG_SBUF] = emu_sfrwrite_SBUF;
+
+    emu.sfrread[REG_P0] = emu_sfrread;
+    emu.sfrread[REG_P1] = emu_sfrread;
+    emu.sfrread[REG_P2] = emu_sfrread;
+    emu.sfrread[REG_P3] = emu_sfrread;
+
     reset(&emu, 1);
 
     if (parc > 1)
