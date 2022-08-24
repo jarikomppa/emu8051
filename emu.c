@@ -284,12 +284,8 @@ int main(int parc, char ** pars)
     emu.mCodeMemSize = 65536;
     emu.mExtData     = malloc(65536);
     emu.mExtDataSize = 65536;
-    emu.mLowerData   = malloc(128);
     emu.mUpperData   = malloc(128);
-    emu.mSFR         = malloc(128);
     emu.except       = &emu_exception;
-    emu.sfrread      = malloc(128 * sizeof(em8051sfrread));
-    emu.sfrwrite     = malloc(128 * sizeof(em8051sfrwrite));
     emu.xread = NULL;
     emu.xwrite = NULL;
 
