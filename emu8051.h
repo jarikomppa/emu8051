@@ -222,6 +222,18 @@ enum IP_MASKS
     IPMASK_PT2 = 0x20
 };
 
+enum SCON_MASKS
+{
+    SCONMASK_RI   = 0x01,
+    SCONMASK_TI   = 0x02,
+    SCONMASK_RB8  = 0x04,
+    SCONMASK_TB8  = 0x08,
+    SCONMASK_REN  = 0x10,
+    SCONMASK_SM2  = 0x20,
+    SCONMASK_SM1  = 0x40,
+    SCONMASK_SM0  = 0x80,
+};
+
 enum EM8051_EXCEPTION
 {
     EXCEPTION_STACK,  // stack address > 127 with no upper memory, or roll over

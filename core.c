@@ -33,6 +33,27 @@
 #include <string.h>
 #include "emu8051.h"
 
+static void serial_tx(struct em8051 *aCPU) {
+	// Test if still something to send
+	if (! aCPU->serial_out_remaining_bits)
+	       return;
+
+	aCPU->serial_out_remaining_bits--;
+	int tx_bit = (aCPU->mSFR[REG_SBUF] >> aCPU->serial_out_remaining_bits) & 0x01;
+	// Set P3.1 according to the currently clocked out SERIAL bit
+	aCPU->mSFR[REG_P3] &= ~(1 << 1);
+	if (tx_bit) aCPU->mSFR[REG_P3] |= (1 << 1);
+
+	// If everything is sent now, add it to the visual buffer & raise interrupt
+	if (aCPU->serial_out_remaining_bits == 0) {
+		aCPU->serial_out[aCPU->serial_out_idx] = aCPU->mSFR[REG_SBUF];
+		aCPU->serial_out_idx = (aCPU->serial_out_idx + 1) % sizeof(aCPU->serial_out);
+		aCPU->mSFR[REG_SCON] |= (1<<1); // Set TI bit
+		if (aCPU->mSFR[REG_IE] & IEMASK_ES) aCPU->serial_interrupt_trigger = 1; // Trigger Serial Interrupt
+	}
+}
+
+
 static void timer_tick(struct em8051 *aCPU)
 {
     int increment;
@@ -272,6 +293,14 @@ static void timer_tick(struct em8051 *aCPU)
             default: // disabled
                 break;
             }
+
+	    // If Timer1 overflowed, see if we need to send a serial bit
+            if (aCPU->mSFR[REG_TCON] & TCONMASK_TF1) {
+                if (aCPU->mSFR[REG_SCON] & SCONMASK_SM1) {
+                    serial_tx(aCPU);
+		    aCPU->mSFR[REG_TCON] &= ~TCONMASK_TF1; // clear overflow flag
+                }
+            }
         }
     }
 
@@ -423,14 +452,6 @@ int tick(struct em8051 *aCPU)
     if (aCPU->mTickDelay)
     {
         aCPU->mTickDelay--;
-    }
-
-    // Handle Serial
-    if (aCPU->serial_out_remaining_bits && ! --aCPU->serial_out_remaining_bits) {
-        aCPU->serial_out[aCPU->serial_out_idx] = aCPU->mSFR[REG_SBUF];
-        aCPU->serial_out_idx = (aCPU->serial_out_idx + 1) % sizeof(aCPU->serial_out);
-        aCPU->mSFR[REG_SCON] |= (1<<1); // Set TI bit
-        if (aCPU->mSFR[REG_IE] & IEMASK_ES) aCPU->serial_interrupt_trigger = 1; // Trigger Serial Interrupt
     }
 
     // Interrupts are sent if the following cases are not true:
