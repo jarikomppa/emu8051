@@ -42,18 +42,18 @@
 #define RX_ADDRESS ((OPCODE & 7) + 8 * ((PSW & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0))
 #define CARRY ((PSW & PSWMASK_C) >> PSW_C)
 
-static int read_mem(struct em8051 *aCPU, int address)
+static int read_mem(struct em8051 *aCPU, int aAddress)
 {
-    if (address > 0x7f)
+    if (aAddress > 0x7f)
     {
-        if (aCPU->sfrread[address - 0x80])
-            return aCPU->sfrread[address - 0x80](aCPU, address);
+        if (aCPU->sfrread[aAddress - 0x80])
+            return aCPU->sfrread[aAddress - 0x80](aCPU, aAddress);
         else
-            return aCPU->mSFR[address - 0x80];
+            return aCPU->mSFR[aAddress - 0x80];
     }
     else
     {
-        return aCPU->mLowerData[address];
+        return aCPU->mLowerData[aAddress];
     }
 }
 
