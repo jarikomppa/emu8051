@@ -46,11 +46,10 @@ static int read_mem(struct em8051 *aCPU, int aAddress)
 {
     if (aAddress > 0x7f)
     {
-        int reg_address = aAddress - 0x80;
-        if (aCPU->sfrread[reg_address])
-            return aCPU->sfrread[reg_address](aCPU, aAddress);
+        if (aCPU->sfrread[aAddress - 0x80])
+            return aCPU->sfrread[aAddress - 0x80](aCPU, aAddress);
         else
-            return aCPU->mSFR[reg_address];
+            return aCPU->mSFR[aAddress - 0x80];
     }
     else
     {
