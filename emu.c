@@ -67,10 +67,7 @@ unsigned int clocks = 0;
 int view = MAIN_VIEW;
 
 // old port out values
-int p0out = 0;
-int p1out = 0;
-int p2out = 0;
-int p3out = 0;
+int pout[4] = { 0 };
 
 int breakpoint = -1;
 
@@ -167,12 +164,9 @@ void setSpeed(int speed, int runmode)
 }
 
 
-void emu_sfrwrite(struct em8051 *aCPU, int aRegister)
+void emu_sfrwrite_SBUF(struct em8051 *aCPU, int aRegister)
 {
-    if (aRegister == REG_SBUF + 0x80)
-    {
-	    aCPU->serial_out_remaining_bits = 8;
-    }
+    aCPU->serial_out_remaining_bits = 8;
 }
 
 int emu_sfrread(struct em8051 *aCPU, int aRegister)
@@ -183,38 +177,38 @@ int emu_sfrread(struct em8051 *aCPU, int aRegister)
     {
         if (aRegister == REG_P0 + 0x80)
         {
-            outputbyte = p0out;
+            outputbyte = pout[0];
         }
         if (aRegister == REG_P1 + 0x80)
         {
-            outputbyte =  p1out;
+            outputbyte = pout[1];
         }
         if (aRegister == REG_P2 + 0x80)
         {
-            outputbyte =  p2out;
+            outputbyte = pout[2];
         }
         if (aRegister == REG_P3 + 0x80)
         {
-            outputbyte =  p3out;
+            outputbyte = pout[3];
         }
     }
     else
     {
         if (aRegister == REG_P0 + 0x80)
         {
-            outputbyte = p0out = emu_readvalue(aCPU, "P0 port read", p0out, 2);
+            outputbyte = pout[0] = emu_readvalue(aCPU, "P0 port read", pout[0], 2);
         }
         if (aRegister == REG_P1 + 0x80)
         {
-            outputbyte = p1out = emu_readvalue(aCPU, "P1 port read", p1out, 2);
+            outputbyte = pout[1] = emu_readvalue(aCPU, "P1 port read", pout[1], 2);
         }
         if (aRegister == REG_P2 + 0x80)
         {
-            outputbyte = p2out = emu_readvalue(aCPU, "P2 port read", p2out, 2);
+            outputbyte = pout[2] = emu_readvalue(aCPU, "P2 port read", pout[2], 2);
         }
         if (aRegister == REG_P3 + 0x80)
         {
-            outputbyte = p3out = emu_readvalue(aCPU, "P3 port read", p3out, 2);
+            outputbyte = pout[3] = emu_readvalue(aCPU, "P3 port read", pout[3], 2);
         }
     }
     if (outputbyte != -1)
@@ -286,18 +280,22 @@ int main(int parc, char ** pars)
     int ticked = 1;
 
     memset(&emu, 0, sizeof(emu));
-    emu.mCodeMem     = malloc(65536);
     emu.mCodeMemSize = 65536;
-    emu.mExtData     = malloc(65536);
+    emu.mCodeMem     = calloc(emu.mCodeMemSize, sizeof(unsigned char));
     emu.mExtDataSize = 65536;
-    emu.mLowerData   = malloc(128);
-    emu.mUpperData   = malloc(128);
-    emu.mSFR         = malloc(128);
+    emu.mExtData     = calloc(emu.mExtDataSize, sizeof(unsigned char));
+    emu.mUpperData   = calloc(128, sizeof(unsigned char));
     emu.except       = &emu_exception;
-    emu.sfrread      = &emu_sfrread;
-    emu.sfrwrite     = &emu_sfrwrite;
     emu.xread = NULL;
     emu.xwrite = NULL;
+
+    emu.sfrwrite[REG_SBUF] = emu_sfrwrite_SBUF;
+
+    emu.sfrread[REG_P0] = emu_sfrread;
+    emu.sfrread[REG_P1] = emu_sfrread;
+    emu.sfrread[REG_P2] = emu_sfrread;
+    emu.sfrread[REG_P3] = emu_sfrread;
+
     reset(&emu, 1);
 
     if (parc > 1)

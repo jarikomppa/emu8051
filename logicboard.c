@@ -156,14 +156,14 @@ void logicboard_tick(struct em8051 *aCPU)
 
 			if (chardisplay4bmode == 0)
 			{
-				p1out = chardisplaydata;
+				pout[1] = chardisplaydata;
 			}
 			else
 			{	
 				if (chardisplaytick)
-					p1out = (chardisplaydata << 4) & 0xf0;
+					pout[1] = (chardisplaydata << 4) & 0xf0;
 				else
-					p1out = (chardisplaydata << 0) & 0xf0;
+					pout[1] = (chardisplaydata << 0) & 0xf0;
 				chardisplaytick = !chardisplaytick;
 			}
 		}
@@ -601,16 +601,16 @@ void logicboard_editor_keys(struct em8051 *aCPU, int ch)
         switch (position)
         {
         case 0:
-            p0out ^= 1 << xorvalue;
+            pout[0] ^= 1 << xorvalue;
             break;
         case 1:
-            p1out ^= 1 << xorvalue;
+            pout[1] ^= 1 << xorvalue;
             break;
         case 2:
-            p2out ^= 1 << xorvalue;
+            pout[2] ^= 1 << xorvalue;
             break;
         case 3:
-            p3out ^= 1 << xorvalue;
+            pout[3] ^= 1 << xorvalue;
             break;
         }
     }
@@ -635,7 +635,7 @@ void logicboard_update(struct em8051 *aCPU)
         ledstate[(data>>1)&1],
         ledstate[(data>>0)&1]);
 
-    data = p0out;
+    data = pout[0];
     mvprintw( 5, 2, "   %c %c %c %c %c %c %c %c",
         swstate[(data>>7)&1],
         swstate[(data>>6)&1],
@@ -657,7 +657,7 @@ void logicboard_update(struct em8051 *aCPU)
         ledstate[(data>>1)&1],
         ledstate[(data>>0)&1]);
 
-    data = p1out;
+    data = pout[1];
     mvprintw( 8, 2, "   %c %c %c %c %c %c %c %c",
         swstate[(data>>7)&1],
         swstate[(data>>6)&1],
@@ -679,7 +679,7 @@ void logicboard_update(struct em8051 *aCPU)
         ledstate[(data>>1)&1],
         ledstate[(data>>0)&1]);
 
-    data = p2out;
+    data = pout[2];
     mvprintw(11, 2, "   %c %c %c %c %c %c %c %c",
         swstate[(data>>7)&1],
         swstate[(data>>6)&1],
@@ -701,7 +701,7 @@ void logicboard_update(struct em8051 *aCPU)
         ledstate[(data>>1)&1],
         ledstate[(data>>0)&1]);
 
-    data = p3out;
+    data = pout[3];
     mvprintw(14, 2, "   %c %c %c %c %c %c %c %c",
         swstate[(data>>7)&1],
         swstate[(data>>6)&1],

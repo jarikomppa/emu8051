@@ -46,8 +46,8 @@ static int read_mem(struct em8051 *aCPU, int aAddress)
 {
     if (aAddress > 0x7f)
     {
-        if (aCPU->sfrread)
-            return aCPU->sfrread(aCPU, aAddress);
+        if (aCPU->sfrread[aAddress - 0x80])
+            return aCPU->sfrread[aAddress - 0x80](aCPU, aAddress);
         else
             return aCPU->mSFR[aAddress - 0x80];
     }
@@ -174,8 +174,8 @@ static int inc_mem(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80]++;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -220,8 +220,8 @@ static int jbc_bitaddr_offset(struct em8051 *aCPU)
         {
             aCPU->mSFR[address - 0x80] &= ~bitmask;
             PC += (signed char)OPERAND2 + 3;
-            if (aCPU->sfrwrite)
-                aCPU->sfrwrite(aCPU, address);
+            if (aCPU->sfrwrite[address - 0x80])
+                aCPU->sfrwrite[address - 0x80](aCPU, address);
         }
         else
         {
@@ -288,8 +288,8 @@ static int dec_mem(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80]--;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -327,8 +327,8 @@ static int jb_bitaddr_offset(struct em8051 *aCPU)
         int bitmask = (1 << bit);
         int value;
         address &= 0xf8;        
-        if (aCPU->sfrread)
-            value = aCPU->sfrread(aCPU, address);
+        if (aCPU->sfrread[address - 0x80])
+            value = aCPU->sfrread[address - 0x80](aCPU, address);
         else
             value = aCPU->mSFR[address - 0x80];
         
@@ -423,8 +423,8 @@ static int jnb_bitaddr_offset(struct em8051 *aCPU)
         int bitmask = (1 << bit);
         int value;
         address &= 0xf8;        
-        if (aCPU->sfrread)
-            value = aCPU->sfrread(aCPU, address);
+        if (aCPU->sfrread[address - 0x80])
+            value = aCPU->sfrread[address - 0x80](aCPU, address);
         else
             value = aCPU->mSFR[address - 0x80];
         
@@ -557,8 +557,8 @@ static int orl_mem_a(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80] |= ACC;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -574,8 +574,8 @@ static int orl_mem_imm(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80] |= OPERAND2;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -643,8 +643,8 @@ static int anl_mem_a(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80] &= ACC;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -660,8 +660,8 @@ static int anl_mem_imm(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80] &= OPERAND2;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -727,8 +727,8 @@ static int xrl_mem_a(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80] ^= ACC;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -744,8 +744,8 @@ static int xrl_mem_imm(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80] ^= OPERAND2;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -815,8 +815,8 @@ static int orl_c_bitaddr(struct em8051 *aCPU)
         int bitmask = (1 << bit);
         int value;
         address &= 0xf8;        
-        if (aCPU->sfrread)
-            value = aCPU->sfrread(aCPU, address);
+        if (aCPU->sfrread[address - 0x80])
+            value = aCPU->sfrread[address - 0x80](aCPU, address);
         else
             value = aCPU->mSFR[address - 0x80];
 
@@ -857,8 +857,8 @@ static int mov_mem_imm(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80] = OPERAND2;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -906,8 +906,8 @@ static int anl_c_bitaddr(struct em8051 *aCPU)
         int bitmask = (1 << bit);
         int value;
         address &= 0xf8;        
-        if (aCPU->sfrread)
-            value = aCPU->sfrread(aCPU, address);
+        if (aCPU->sfrread[address - 0x80])
+            value = aCPU->sfrread[address - 0x80](aCPU, address);
         else
             value = aCPU->mSFR[address - 0x80];
 
@@ -967,8 +967,8 @@ static int mov_mem_mem(struct em8051 *aCPU)
     if (address1 > 0x7f)
     {
         aCPU->mSFR[address1 - 0x80] = value;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address1);
+        if (aCPU->sfrwrite[address1 - 0x80])
+            aCPU->sfrwrite[address1 - 0x80](aCPU, address1);
     }
     else
     {
@@ -993,14 +993,14 @@ static int mov_mem_indir_rx(struct em8051 *aCPU)
                 value = aCPU->mUpperData[address2 - 0x80];
             }
             aCPU->mSFR[address1 - 0x80] = value;
-            if (aCPU->sfrwrite)
-                aCPU->sfrwrite(aCPU, address1);
+            if (aCPU->sfrwrite[address1 - 0x80])
+                aCPU->sfrwrite[address1 - 0x80](aCPU, address1);
         }
         else
         {
             aCPU->mSFR[address1 - 0x80] = aCPU->mLowerData[address2];
-            if (aCPU->sfrwrite)
-                aCPU->sfrwrite(aCPU, address1);
+            if (aCPU->sfrwrite[address1 - 0x80])
+                aCPU->sfrwrite[address1 - 0x80](aCPU, address1);
         }
     }
     else
@@ -1045,8 +1045,8 @@ static int mov_bitaddr_c(struct em8051 *aCPU)
         int bitmask = (1 << bit);
         address &= 0xf8;        
         aCPU->mSFR[address - 0x80] = (aCPU->mSFR[address - 0x80] & ~bitmask) | (carry << bit);
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -1122,8 +1122,8 @@ static int orl_c_compl_bitaddr(struct em8051 *aCPU)
         int bitmask = (1 << bit);
         int value;
         address &= 0xf8;        
-        if (aCPU->sfrread)
-            value = aCPU->sfrread(aCPU, address);
+        if (aCPU->sfrread[address - 0x80])
+            value = aCPU->sfrread[address - 0x80](aCPU, address);
         else
             value = aCPU->mSFR[address - 0x80];
 
@@ -1154,8 +1154,8 @@ static int mov_c_bitaddr(struct em8051 *aCPU)
         int bitmask = (1 << bit);
         int value;
         address &= 0xf8;        
-        if (aCPU->sfrread)
-            value = aCPU->sfrread(aCPU, address);
+        if (aCPU->sfrread[address - 0x80])
+            value = aCPU->sfrread[address - 0x80](aCPU, address);
         else
             value = aCPU->mSFR[address - 0x80];
 
@@ -1231,8 +1231,8 @@ static int anl_c_compl_bitaddr(struct em8051 *aCPU)
         int bitmask = (1 << bit);
         int value;
         address &= 0xf8;        
-        if (aCPU->sfrread)
-            value = aCPU->sfrread(aCPU, address);
+        if (aCPU->sfrread[address - 0x80])
+            value = aCPU->sfrread[address - 0x80](aCPU, address);
         else
             value = aCPU->mSFR[address - 0x80];
 
@@ -1266,8 +1266,8 @@ static int cpl_bitaddr(struct em8051 *aCPU)
         int bitmask = (1 << bit);
         address &= 0xf8;        
         aCPU->mSFR[address - 0x80] ^= bitmask;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -1318,8 +1318,8 @@ static int cjne_a_mem_offset(struct em8051 *aCPU)
     int value;
     if (address > 0x7f)
     {
-        if (aCPU->sfrread)
-            value = aCPU->sfrread(aCPU, address);
+        if (aCPU->sfrread[address - 0x80])
+            value = aCPU->sfrread[address - 0x80](aCPU, address);
         else
             value = aCPU->mSFR[address - 0x80];
     }
@@ -1404,8 +1404,8 @@ static int clr_bitaddr(struct em8051 *aCPU)
         int bitmask = (1 << bit);
         address &= 0xf8;        
         aCPU->mSFR[address - 0x80] &= ~bitmask;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -1441,8 +1441,8 @@ static int xch_a_mem(struct em8051 *aCPU)
     {
         aCPU->mSFR[address - 0x80] = ACC;
         ACC = value;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -1483,8 +1483,8 @@ static int pop_mem(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80] = pop_from_stack(aCPU);
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -1506,8 +1506,8 @@ static int setb_bitaddr(struct em8051 *aCPU)
         int bitmask = (1 << bit);
         address &= 0xf8;        
         aCPU->mSFR[address - 0x80] |= bitmask;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -1567,8 +1567,8 @@ static int djnz_mem_offset(struct em8051 *aCPU)
     {
         aCPU->mSFR[address - 0x80]--;
         value = aCPU->mSFR[address - 0x80];
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -1735,8 +1735,8 @@ static int mov_mem_a(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80] = ACC;
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
@@ -1847,8 +1847,8 @@ static int mov_mem_rx(struct em8051 *aCPU)
     if (address > 0x7f)
     {
         aCPU->mSFR[address - 0x80] = aCPU->mLowerData[rx];
-        if (aCPU->sfrwrite)
-            aCPU->sfrwrite(aCPU, address);
+        if (aCPU->sfrwrite[address - 0x80])
+            aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {

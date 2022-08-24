@@ -81,3 +81,12 @@ On Debian/Ubuntu it is simply done as
 
     sudo apt-get install libncurses5 libncurses5-dev
 
+
+Code Style
+==========
+
+Arguments to functions are prefixed with "a", such as in
+
+    static int read_mem(struct em8051 *aCPU, int aAddress)
+
+Local variables are using standard [snake case](https://wikipedia.org/wiki/Snake_case).

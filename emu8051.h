@@ -63,16 +63,16 @@ struct em8051
     int mCodeMemSize; 
     unsigned char *mExtData; // 0 - 64k, must be power of 2
     int mExtDataSize;
-    unsigned char *mLowerData; // 128 bytes
+    unsigned char mLowerData[128]; // 128 bytes
     unsigned char *mUpperData; // 0 or 128 bytes; leave to NULL if none
-    unsigned char *mSFR; // 128 bytes; (special function registers)
+    unsigned char mSFR[128]; // 128 bytes; (special function registers)
     int mPC; // Program Counter; outside memory area
     int mTickDelay; // How many ticks should we delay before continuing
     em8051operation op[256]; // function pointers to opcode handlers
     em8051decoder dec[256]; // opcode-to-string decoder handlers    
     em8051exception except; // callback: exceptional situation occurred
-    em8051sfrread sfrread; // callback: SFR register being read
-    em8051sfrwrite sfrwrite; // callback: SFR register written
+    em8051sfrread sfrread[128]; // callback array: SFR register being read
+    em8051sfrwrite sfrwrite[128]; // callback array: SFR register written
     em8051xread xread; // callback: external memory being read
     em8051xwrite xwrite; // callback: external memory being written
 
