@@ -234,6 +234,19 @@ enum SCON_MASKS
     SCONMASK_SM0  = 0x80,
 };
 
+enum ISR_VECTORS
+{
+    ISR_RST  = 0x00,
+    ISR_INT0 = 0x03,
+    ISR_TF0  = 0x0B,
+    ISR_INT1 = 0x13,
+    ISR_TF1  = 0x1B,
+    ISR_SR   = 0x23,
+#ifdef __8052__
+    ISR_TF2  = 0x2B,
+#endif // __8052__
+};
+
 enum EM8051_EXCEPTION
 {
     EXCEPTION_STACK,  // stack address > 127 with no upper memory, or roll over

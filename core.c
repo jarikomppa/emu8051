@@ -323,7 +323,7 @@ void handle_interrupts(struct em8051 *aCPU)
         if (aCPU->mSFR[REG_IE] & IEMASK_EX0 && aCPU->mSFR[REG_TCON] & TCONMASK_IE0)
         {
             // External int 0 
-            dest_ip = 0x3;
+            dest_ip = ISR_INT0;
             if (aCPU->mSFR[REG_IP] & IPMASK_PX0)
                 hi = 1;
             lo = 1;
@@ -333,13 +333,13 @@ void handle_interrupts(struct em8051 *aCPU)
             // Timer/counter 0 
             if (!lo)
             {
-                dest_ip = 0xb;
+                dest_ip = ISR_TF0;
                 lo = 1;
             }
             if (aCPU->mSFR[REG_IP] & IPMASK_PT0)
             {
                 hi = 1;
-                dest_ip = 0xb;
+                dest_ip = ISR_TF0;
             }
         }
         if (aCPU->mSFR[REG_IE] & IEMASK_EX1 && aCPU->mSFR[REG_TCON] & TCONMASK_IE1 && !hi)
@@ -347,13 +347,13 @@ void handle_interrupts(struct em8051 *aCPU)
             // External int 1 
             if (!lo)
             {
-                dest_ip = 0x13;
+                dest_ip = ISR_INT1;
                 lo = 1;
             }
             if (aCPU->mSFR[REG_IP] & IPMASK_PX1)
             {
                 hi = 1;
-                dest_ip = 0x13;
+                dest_ip = ISR_INT1;
             }
         }
         if (aCPU->mSFR[REG_IE] & IEMASK_ET1 && aCPU->mSFR[REG_TCON] & TCONMASK_TF1 && !hi)
@@ -361,13 +361,13 @@ void handle_interrupts(struct em8051 *aCPU)
             // Timer/counter 1 enabled
             if (!lo)
             {
-                dest_ip = 0x1b;
+                dest_ip = ISR_TF1;
                 lo = 1;
             }
             if (aCPU->mSFR[REG_IP] & IPMASK_PT1)
             {
                 hi = 1;
-                dest_ip = 0x1b;
+                dest_ip = ISR_TF1;
             }
         }
         if (aCPU->mSFR[REG_IE] & IEMASK_ES && aCPU->serial_interrupt_trigger && !hi)
@@ -375,31 +375,33 @@ void handle_interrupts(struct em8051 *aCPU)
             // Serial port interrupt 
             if (!lo)
             {
-                dest_ip = 0x23;
+                dest_ip = ISR_SR;
                 lo = 1;
             }
             if (aCPU->mSFR[REG_IP] & IPMASK_PS)
             {
                 hi = 1;
-                dest_ip = 0x23;
+                dest_ip = ISR_SR;
             }
             // TODO
         }
+#ifdef __8052__
         if (aCPU->mSFR[REG_IE] & IEMASK_ET2 && !hi)
         {
             // Timer 2 (8052 only)
             if (!lo)
             {
-                dest_ip = 0x2b; // guessed
+                dest_ip = ISR_SR;
                 lo = 1;
             }
             if (aCPU->mSFR[REG_IP] & IPMASK_PT2)
             {
                 hi = 1;
-                dest_ip = 0x2b; // guessed
+                dest_ip = ISR_SR;
             }
             // TODO
         }
+#endif // __8052__
     }
     
     // no interrupt
@@ -420,13 +422,13 @@ void handle_interrupts(struct em8051 *aCPU)
     aCPU->mTickDelay = 2;
     switch (dest_ip)
     {
-    case 0xb:
+    case ISR_TF0:
         aCPU->mSFR[REG_TCON] &= ~TCONMASK_TF0; // clear overflow flag
         break;
-    case 0x1b:
+    case ISR_TF1:
         aCPU->mSFR[REG_TCON] &= ~TCONMASK_TF1; // clear overflow flag
         break;
-    case 0x23:
+    case ISR_SR:
         aCPU->serial_interrupt_trigger = 0; // handled the serial interrupt trigger
         break;
     }
