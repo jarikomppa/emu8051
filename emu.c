@@ -280,11 +280,11 @@ int main(int parc, char ** pars)
     int ticked = 1;
 
     memset(&emu, 0, sizeof(emu));
-    emu.mCodeMem     = malloc(65536);
     emu.mCodeMemSize = 65536;
-    emu.mExtData     = malloc(65536);
+    emu.mCodeMem     = calloc(emu.mCodeMemSize, sizeof(unsigned char));
     emu.mExtDataSize = 65536;
-    emu.mUpperData   = malloc(128);
+    emu.mExtData     = calloc(emu.mExtDataSize, sizeof(unsigned char));
+    emu.mUpperData   = calloc(128, sizeof(unsigned char));
     emu.except       = &emu_exception;
     emu.xread = NULL;
     emu.xwrite = NULL;
