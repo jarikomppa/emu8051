@@ -36,6 +36,7 @@
 #define ACC aCPU->mSFR[REG_ACC]
 #define PC aCPU->mPC
 #define CODEMEM(x) aCPU->mCodeMem[(x)&(aCPU->mCodeMemSize-1)]
+#define EXTDATA(x) aCPU->mExtData[(x)&(aCPU->mExtDataSize-1)]
 #define OPCODE CODEMEM(PC + 0)
 #define OPERAND1 CODEMEM(PC + 1)
 #define OPERAND2 CODEMEM(PC + 2)
@@ -1621,7 +1622,7 @@ static int movx_a_indir_dptr(struct em8051 *aCPU)
     else
     {
         if (aCPU->mExtData)
-            ACC = aCPU->mExtData[dptr & (aCPU->mExtDataSize - 1)];
+            ACC = EXTDATA(dptr);
     }
     PC++;
     return 1;
@@ -1637,7 +1638,7 @@ static int movx_a_indir_rx(struct em8051 *aCPU)
     else
     {
         if (aCPU->mExtData)
-            ACC = aCPU->mExtData[address & (aCPU->mExtDataSize - 1)];
+            ACC = EXTDATA(address);
     }
 
     PC++;
@@ -1698,7 +1699,7 @@ static int movx_indir_dptr_a(struct em8051 *aCPU)
     else
     {
         if (aCPU->mExtData)
-            aCPU->mExtData[dptr & (aCPU->mExtDataSize - 1)] = ACC;
+            EXTDATA(dptr) = ACC;
     }
 
     PC++;
@@ -1716,7 +1717,7 @@ static int movx_indir_rx_a(struct em8051 *aCPU)
     else
     {
         if (aCPU->mExtData)
-            aCPU->mExtData[address & (aCPU->mExtDataSize - 1)] = ACC;
+            EXTDATA(address) = ACC;
     }
 
     PC++;
