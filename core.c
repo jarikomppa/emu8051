@@ -534,6 +534,12 @@ void reset(struct em8051 *aCPU, int aWipe)
     aCPU->mSFR[REG_P2] = 0xff;
     aCPU->mSFR[REG_P3] = 0xff;
 
+    // Power-off flag will be 1 only after a power on (cold reset).
+    // A warm reset doesn’t affect the value of this bit
+    // ... Therefore, we only set it if aWipe is 1
+    if (aWipe)
+        aCPU->mSFR[REG_PCON] |= (1<<4);
+
     // build function pointer lists
 
     disasm_setptrs(aCPU);
