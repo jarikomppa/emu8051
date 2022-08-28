@@ -37,6 +37,7 @@
 #define PC aCPU->mPC
 #define CODEMEM(x) aCPU->mCodeMem[(x)&(aCPU->mCodeMemSize-1)]
 #define EXTDATA(x) aCPU->mExtData[(x)&(aCPU->mExtDataSize-1)]
+#define UPRDATA(x) aCPU->mUpperData[(x) - 0x80]
 #define OPCODE CODEMEM(PC + 0)
 #define OPERAND1 CODEMEM(PC + 1)
 #define OPERAND2 CODEMEM(PC + 2)
@@ -66,7 +67,7 @@ void push_to_stack(struct em8051 *aCPU, int aValue)
     {
         if (aCPU->mUpperData)
         {
-            aCPU->mUpperData[aCPU->mSFR[REG_SP] - 0x80] = aValue;
+            UPRDATA(aCPU->mSFR[REG_SP]) = aValue;
         }
         else
         {
@@ -90,7 +91,7 @@ static int pop_from_stack(struct em8051 *aCPU)
     {
         if (aCPU->mUpperData)
         {
-            value = aCPU->mUpperData[aCPU->mSFR[REG_SP] - 0x80];
+            value = UPRDATA(aCPU->mSFR[REG_SP]);
         }
         else
         {
