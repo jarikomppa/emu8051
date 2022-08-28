@@ -413,7 +413,7 @@ void handle_interrupts(struct em8051 *aCPU)
         return; 
 
     // some interrupt occurs; perform LCALL
-    aCPU->mSFR[REG_PCON] &= ~0x01; // clear idle flag
+    aCPU->mSFR[REG_PCON] &= ~0x01; // clear idle flag, but not Power down flag
     push_to_stack(aCPU, aCPU->mPC & 0xff);
     push_to_stack(aCPU, aCPU->mPC >> 8);
     aCPU->mPC = dest_ip;
@@ -456,6 +456,12 @@ int tick(struct em8051 *aCPU)
         aCPU->mTickDelay--;
     }
 
+    // Test for Power Down
+    if (aCPU->mTickDelay == 0 && (aCPU->mSFR[REG_PCON]) & 0x02) {
+        aCPU->mTickDelay = 1;
+        return 1;
+    }
+
     // Interrupts are sent if the following cases are not true:
     // 1. interrupt of equal or higher priority is in progress (tested inside function)
     // 2. current cycle is not the final cycle of instruction (tickdelay = 0)
@@ -493,6 +499,11 @@ int decode(struct em8051 *aCPU, int aPosition, char *aBuffer)
     int is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
     if (is_idle) {
         sprintf(aBuffer, "IDLE");
+        return 0;
+    }
+    int is_powerdown = (aCPU->mSFR[REG_PCON]) & 0x02;
+    if (is_powerdown) {
+        sprintf(aBuffer, "POWER DOWN");
         return 0;
     }
     return aCPU->dec[aCPU->mCodeMem[aPosition & (aCPU->mCodeMemSize - 1)]](aCPU, aPosition, aBuffer);
