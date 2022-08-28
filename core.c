@@ -540,6 +540,10 @@ void reset(struct em8051 *aCPU, int aWipe)
     if (aWipe)
         aCPU->mSFR[REG_PCON] |= (1<<4);
 
+    // Random values
+    if (aWipe)
+        aCPU->mSFR[REG_SBUF] = rand();
+
     // build function pointer lists
 
     disasm_setptrs(aCPU);
