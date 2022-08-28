@@ -35,9 +35,10 @@
 #define PSW aCPU->mSFR[REG_PSW]
 #define ACC aCPU->mSFR[REG_ACC]
 #define PC aCPU->mPC
-#define OPCODE aCPU->mCodeMem[(PC + 0)&(aCPU->mCodeMemSize-1)]
-#define OPERAND1 aCPU->mCodeMem[(PC + 1)&(aCPU->mCodeMemSize-1)]
-#define OPERAND2 aCPU->mCodeMem[(PC + 2)&(aCPU->mCodeMemSize-1)]
+#define CODEMEM(x) aCPU->mCodeMem[(x)&(aCPU->mCodeMemSize-1)]
+#define OPCODE CODEMEM(PC + 0)
+#define OPERAND1 CODEMEM(PC + 1)
+#define OPERAND2 CODEMEM(PC + 2)
 #define INDIR_RX_ADDRESS (aCPU->mLowerData[(OPCODE & 1) + 8 * ((PSW & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0)])
 #define RX_ADDRESS ((OPCODE & 7) + 8 * ((PSW & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0))
 #define CARRY ((PSW & PSWMASK_C) >> PSW_C)
@@ -260,8 +261,8 @@ static int lcall_address(struct em8051 *aCPU)
 {
     push_to_stack(aCPU, (PC + 3) & 0xff);
     push_to_stack(aCPU, (PC + 3) >> 8);
-    PC = (aCPU->mCodeMem[(PC + 1) & (aCPU->mCodeMemSize-1)] << 8) | 
-         (aCPU->mCodeMem[(PC + 2) & (aCPU->mCodeMemSize-1)] << 0);
+    PC = (OPERAND1 << 8) |
+         (OPERAND2 << 0);
     return 1;
 }
 
@@ -932,7 +933,7 @@ static int anl_c_bitaddr(struct em8051 *aCPU)
 static int movc_a_indir_a_pc(struct em8051 *aCPU)
 {
     int address = PC + 1 + ACC;
-    ACC = aCPU->mCodeMem[address & (aCPU->mCodeMemSize - 1)];
+    ACC = CODEMEM(address);
     PC++;
     return 0;
 }
@@ -1063,7 +1064,7 @@ static int mov_bitaddr_c(struct em8051 *aCPU)
 static int movc_a_indir_a_dptr(struct em8051 *aCPU)
 {
     int address = (aCPU->mSFR[REG_DPH] << 8) | ((aCPU->mSFR[REG_DPL] << 0) + ACC);
-    ACC = aCPU->mCodeMem[address & (aCPU->mCodeMemSize - 1)];
+    ACC = CODEMEM(address);
     PC++;
     return 1;
 }
@@ -1257,7 +1258,7 @@ static int anl_c_compl_bitaddr(struct em8051 *aCPU)
 
 static int cpl_bitaddr(struct em8051 *aCPU)
 {
-    int address = aCPU->mCodeMem[(PC + 1) & (aCPU->mCodeMemSize - 1)];
+    int address = OPERAND1;
     if (address > 0x7f)
     {
         // Data sheet does not explicitly say that the modification source
@@ -1395,7 +1396,7 @@ static int push_mem(struct em8051 *aCPU)
 
 static int clr_bitaddr(struct em8051 *aCPU)
 {
-    int address = aCPU->mCodeMem[(PC + 1) & (aCPU->mCodeMemSize - 1)];
+    int address = OPERAND1;
     if (address > 0x7f)
     {
         // Data sheet does not explicitly say that the modification source
@@ -1497,7 +1498,7 @@ static int pop_mem(struct em8051 *aCPU)
 
 static int setb_bitaddr(struct em8051 *aCPU)
 {
-    int address = aCPU->mCodeMem[(PC + 1) & (aCPU->mCodeMemSize - 1)];
+    int address = OPERAND1;
     if (address > 0x7f)
     {
         // Data sheet does not explicitly say that the modification source
@@ -1765,7 +1766,7 @@ static int mov_indir_rx_a(struct em8051 *aCPU)
 
 static int nop(struct em8051 *aCPU)
 {
-    if (aCPU->mCodeMem[PC & (aCPU->mCodeMemSize - 1)] != 0)
+    if (CODEMEM(PC) != 0)
         if (aCPU->except)
             aCPU->except(aCPU, EXCEPTION_ILLEGAL_OPCODE);
     PC++;
