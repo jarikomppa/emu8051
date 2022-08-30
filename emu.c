@@ -164,12 +164,12 @@ void setSpeed(int speed, int runmode)
 }
 
 
-void emu_sfrwrite_SBUF(struct em8051 *aCPU, int aRegister)
+void emu_sfrwrite_SBUF(struct em8051 *aCPU, uint8_t aRegister)
 {
     aCPU->serial_out_remaining_bits = 8;
 }
 
-int emu_sfrread(struct em8051 *aCPU, int aRegister)
+uint8_t emu_sfrread(struct em8051 *aCPU, uint8_t aRegister)
 {
     int outputbyte = -1;
 
@@ -280,10 +280,10 @@ int main(int parc, char ** pars)
     int ticked = 1;
 
     memset(&emu, 0, sizeof(emu));
-    emu.mCodeMemSize = 65536;
-    emu.mCodeMem     = calloc(emu.mCodeMemSize, sizeof(unsigned char));
-    emu.mExtDataSize = 65536;
-    emu.mExtData     = calloc(emu.mExtDataSize, sizeof(unsigned char));
+    emu.mCodeMemMaxIdx = 65536-1;
+    emu.mCodeMem     = calloc(emu.mCodeMemMaxIdx+1, sizeof(unsigned char));
+    emu.mExtDataMaxIdx = 65536-1;
+    emu.mExtData     = calloc(emu.mExtDataMaxIdx+1, sizeof(unsigned char));
     emu.mUpperData   = calloc(128, sizeof(unsigned char));
     emu.except       = &emu_exception;
     emu.xread = NULL;

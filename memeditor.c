@@ -96,7 +96,7 @@ void build_memeditor_view(struct em8051 *aCPU)
     box(eds[3].box,ACS_VLINE,ACS_HLINE);
     mvwaddstr(eds[3].box, 0, 2, "External");
     eds[3].view = subwin(eds[3].box, eds[3].lines - 2, 38, 1, 41);    
-    eds[3].maxmem = aCPU->mExtDataSize;
+    eds[3].maxmem = aCPU->mExtDataMaxIdx+1;
     eds[3].memarea = aCPU->mExtData;
     eds[3].memviewoffset = 0;
 
@@ -105,7 +105,7 @@ void build_memeditor_view(struct em8051 *aCPU)
     box(eds[4].box,ACS_VLINE,ACS_HLINE);
     mvwaddstr(eds[4].box, 0, 2, "ROM");
     eds[4].view = subwin(eds[4].box, eds[4].lines - 2, 38, eds[3].lines + 1, 41);
-    eds[4].maxmem = aCPU->mCodeMemSize;
+    eds[4].maxmem = aCPU->mCodeMemMaxIdx+1;
     eds[4].memarea = aCPU->mCodeMem;     
     eds[4].memviewoffset = 0;
 
@@ -137,7 +137,7 @@ void memeditor_editor_keys(struct em8051 *aCPU, int ch)
         focus++;
         if (focus == 1 && aCPU->mUpperData == NULL) 
             focus++;
-        if (focus == 3 && aCPU->mExtDataSize == 0)
+        if (focus == 3 && aCPU->mExtData == NULL)
             focus++;
         if (focus == 5)
             focus = 0;
