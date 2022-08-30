@@ -34,19 +34,10 @@
 #include <string.h>
 #include "emu8051.h"
 
-#define BAD_VALUE 0x77
-#define PSW aCPU->mSFR[REG_PSW]
-#define ACC aCPU->mSFR[REG_ACC]
-#define PC aPosition
 #define CODEMEM(x) aCPU->mCodeMem[(x)&(aCPU->mCodeMemSize-1)]
-#define EXTDATA(x) aCPU->mExtData[(x)&(aCPU->mExtDataSize-1)]
-#define UPRDATA(x) aCPU->mUpperData[(x) - 0x80]
-#define OPCODE CODEMEM(PC + 0)
-#define OPERAND1 CODEMEM(PC + 1)
-#define OPERAND2 CODEMEM(PC + 2)
-#define INDIR_RX_ADDRESS (aCPU->mLowerData[(OPCODE & 1) + 8 * ((PSW & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0)])
-#define RX_ADDRESS ((OPCODE & 7) + 8 * ((PSW & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0))
-#define CARRY ((PSW & PSWMASK_C) >> PSW_C)
+#define OPCODE CODEMEM(aPosition + 0)
+#define OPERAND1 CODEMEM(aPosition + 1)
+#define OPERAND2 CODEMEM(aPosition + 2)
 
 
 //#define static
