@@ -124,6 +124,10 @@ void mem_memonic(int aValue, char *aBuffer)
             strcpy(aBuffer, "PCON");
             done = 1;
             break;
+        case REG_SBUF:
+            strcpy(aBuffer, "SBUF");
+            done = 1;
+            break;
         }
     }
     if (!done)

@@ -222,6 +222,31 @@ enum IP_MASKS
     IPMASK_PT2 = 0x20
 };
 
+enum SCON_MASKS
+{
+    SCONMASK_RI   = 0x01,
+    SCONMASK_TI   = 0x02,
+    SCONMASK_RB8  = 0x04,
+    SCONMASK_TB8  = 0x08,
+    SCONMASK_REN  = 0x10,
+    SCONMASK_SM2  = 0x20,
+    SCONMASK_SM1  = 0x40,
+    SCONMASK_SM0  = 0x80,
+};
+
+enum ISR_VECTORS
+{
+    ISR_RST  = 0x00,
+    ISR_INT0 = 0x03,
+    ISR_TF0  = 0x0B,
+    ISR_INT1 = 0x13,
+    ISR_TF1  = 0x1B,
+    ISR_SR   = 0x23,
+#ifdef __8052__
+    ISR_TF2  = 0x2B,
+#endif // __8052__
+};
+
 enum EM8051_EXCEPTION
 {
     EXCEPTION_STACK,  // stack address > 127 with no upper memory, or roll over
