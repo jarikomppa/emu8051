@@ -65,12 +65,12 @@ void wipe_options_view()
 {
 }
 
-void build_options_view(struct em8051 *aCPU)
+void build_options_view()
 {
     erase();
 }
 
-void options_editor_keys(struct em8051 *aCPU, int ch)
+void options_editor_keys(int ch)
 {
     switch (ch)
     {
@@ -137,7 +137,7 @@ void options_editor_keys(struct em8051 *aCPU, int ch)
             if (opt_clock_select > 12)
                 opt_clock_select = 12;
             if (opt_clock_select == 12)
-                opt_clock_hz = emu_readhz(aCPU, "Enter custom clock speed", opt_clock_hz);
+                opt_clock_hz = emu_readhz("Enter custom clock speed", opt_clock_hz);
             else
                 opt_clock_hz = clockspeeds[opt_clock_select];
             if (opt_clock_hz == 0) 
@@ -174,7 +174,7 @@ void options_editor_keys(struct em8051 *aCPU, int ch)
     }
 }
 
-void options_update(struct em8051 *aCPU)
+void options_update()
 {
     int i;
     mvprintw(1, 1, "Options");

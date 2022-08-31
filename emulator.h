@@ -81,43 +81,43 @@ extern int opt_input_outputlow;
 // emu.c
 extern int getTick();
 extern void setSpeed(int speed, int runmode);
-//extern uint8_t emu_sfrread(struct em8051 *aCPU, uint8_t aRegister);
-extern void refreshview(struct em8051 *aCPU);
-extern void change_view(struct em8051 *aCPU, int changeto);
+//extern uint8_t emu_sfrread(uint8_t aRegister);
+extern void refreshview();
+extern void change_view(int changeto);
 
 // popups.c
-extern void emu_help(struct em8051 *aCPU);
-extern int emu_reset(struct em8051 *aCPU);
-extern int emu_readvalue(struct em8051 *aCPU, const char *aPrompt, int aOldvalue, int aValueSize);
-extern int emu_readhz(struct em8051 *aCPU, const char *aPrompt, int aOldvalue);
-extern void emu_load(struct em8051 *aCPU);
-extern void emu_exception(struct em8051 *aCPU, int aCode);
-extern void emu_popup(struct em8051 *aCPU, char *aTitle, char *aMessage);
+extern void emu_help();
+extern int emu_reset();
+extern int emu_readvalue(const char *aPrompt, int aOldvalue, int aValueSize);
+extern int emu_readhz(const char *aPrompt, int aOldvalue);
+extern void emu_load();
+extern void emu_exception(int aCode);
+extern void emu_popup(char *aTitle, char *aMessage);
 
 // mainview.c
-extern void mainview_editor_keys(struct em8051 *aCPU, int ch);
-extern void build_main_view(struct em8051 *aCPU);
+extern void mainview_editor_keys(int ch);
+extern void build_main_view();
 extern void wipe_main_view();
-extern void mainview_update(struct em8051 *aCPU);
+extern void mainview_update();
 
 // logicboard.c
 extern void wipe_logicboard_view();
-extern void build_logicboard_view(struct em8051 *aCPU);
-extern void logicboard_editor_keys(struct em8051 *aCPU, int ch);
-extern void logicboard_update(struct em8051 *aCPU);
-extern void logicboard_tick(struct em8051 *aCPU);
+extern void build_logicboard_view();
+extern void logicboard_editor_keys(int ch);
+extern void logicboard_update();
+extern void logicboard_tick();
 
 // memeditor.c
 extern void wipe_memeditor_view();
-extern void build_memeditor_view(struct em8051 *aCPU);
-extern void memeditor_editor_keys(struct em8051 *aCPU, int ch);
-extern void memeditor_update(struct em8051 *aCPU);
+extern void build_memeditor_view();
+extern void memeditor_editor_keys(int ch);
+extern void memeditor_update();
 
 // options.c
 extern void wipe_options_view();
-extern void build_options_view(struct em8051 *aCPU);
-extern void options_editor_keys(struct em8051 *aCPU, int ch);
-extern void options_update(struct em8051 *aCPU);
+extern void build_options_view();
+extern void options_editor_keys(int ch);
+extern void options_update();
 
 
 

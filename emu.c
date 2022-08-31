@@ -22,7 +22,7 @@
  *
  * (i.e. the MIT License)
  *
- * emu.c
+ * CPU.c
  * Curses-based emulator front-end
  */
 
@@ -164,12 +164,12 @@ void setSpeed(int speed, int runmode)
 }
 
 
-void emu_sfrwrite_SBUF(struct em8051 *aCPU, uint8_t aRegister)
+void emu_sfrwrite_SBUF(uint8_t aRegister)
 {
-    aCPU->serial_out_remaining_bits = 8;
+    CPU.serial_out_remaining_bits = 8;
 }
 
-uint8_t emu_sfrread(struct em8051 *aCPU, uint8_t aRegister)
+uint8_t emu_sfrread(uint8_t aRegister)
 {
     int outputbyte = -1;
 
@@ -196,19 +196,19 @@ uint8_t emu_sfrread(struct em8051 *aCPU, uint8_t aRegister)
     {
         if (aRegister == REG_P0 + 0x80)
         {
-            outputbyte = pout[0] = emu_readvalue(aCPU, "P0 port read", pout[0], 2);
+            outputbyte = pout[0] = emu_readvalue("P0 port read", pout[0], 2);
         }
         if (aRegister == REG_P1 + 0x80)
         {
-            outputbyte = pout[1] = emu_readvalue(aCPU, "P1 port read", pout[1], 2);
+            outputbyte = pout[1] = emu_readvalue("P1 port read", pout[1], 2);
         }
         if (aRegister == REG_P2 + 0x80)
         {
-            outputbyte = pout[2] = emu_readvalue(aCPU, "P2 port read", pout[2], 2);
+            outputbyte = pout[2] = emu_readvalue("P2 port read", pout[2], 2);
         }
         if (aRegister == REG_P3 + 0x80)
         {
-            outputbyte = pout[3] = emu_readvalue(aCPU, "P3 port read", pout[3], 2);
+            outputbyte = pout[3] = emu_readvalue("P3 port read", pout[3], 2);
         }
     }
     if (outputbyte != -1)
@@ -221,23 +221,23 @@ uint8_t emu_sfrread(struct em8051 *aCPU, uint8_t aRegister)
         if (opt_input_outputlow == 0)
         {
             // option: output 0 if output latch is 0
-            return outputbyte & aCPU->mSFR[aRegister - 0x80];
+            return outputbyte & CPU.mSFR[aRegister - 0x80];
         }
         // option: dump random values for output bits with
         // output latches set to 0
-        return (outputbyte & aCPU->mSFR[aRegister - 0x80]) |
-            (rand() & ~aCPU->mSFR[aRegister - 0x80]);
+        return (outputbyte & CPU.mSFR[aRegister - 0x80]) |
+            (rand() & ~CPU.mSFR[aRegister - 0x80]);
     }
-    return aCPU->mSFR[aRegister - 0x80];
+    return CPU.mSFR[aRegister - 0x80];
 
 }
 
-void refreshview(struct em8051 *aCPU)
+void refreshview()
 {
-    change_view(aCPU, view);
+    change_view(view);
 }
 
-void change_view(struct em8051 *aCPU, int changeto)
+void change_view(int changeto)
 {
     switch (view)
     {
@@ -258,16 +258,16 @@ void change_view(struct em8051 *aCPU, int changeto)
     switch (view)
     {
     case MAIN_VIEW:
-        build_main_view(aCPU);
+        build_main_view();
         break;
     case LOGICBOARD_VIEW:
-        build_logicboard_view(aCPU);
+        build_logicboard_view();
         break;
     case MEMEDITOR_VIEW:
-        build_memeditor_view(aCPU);
+        build_memeditor_view();
         break;
     case OPTIONS_VIEW:
-        build_options_view(aCPU);
+        build_options_view();
         break;
     }
 }
@@ -275,28 +275,27 @@ void change_view(struct em8051 *aCPU, int changeto)
 int main(int parc, char ** pars)
 {
     int ch = 0;
-    struct em8051 emu;
     int i;
     int ticked = 1;
 
-    memset(&emu, 0, sizeof(emu));
-    emu.mCodeMemMaxIdx = 65536-1;
-    emu.mCodeMem     = calloc(emu.mCodeMemMaxIdx+1, sizeof(unsigned char));
-    emu.mExtDataMaxIdx = 65536-1;
-    emu.mExtData     = calloc(emu.mExtDataMaxIdx+1, sizeof(unsigned char));
-    emu.mUpperData   = calloc(128, sizeof(unsigned char));
-    emu.except       = &emu_exception;
-    emu.xread = NULL;
-    emu.xwrite = NULL;
+    memset(&CPU, 0, sizeof(CPU));
+    CPU.mCodeMemMaxIdx = 65536-1;
+    CPU.mCodeMem     = calloc(CPU.mCodeMemMaxIdx+1, sizeof(unsigned char));
+    CPU.mExtDataMaxIdx = 65536-1;
+    CPU.mExtData     = calloc(CPU.mExtDataMaxIdx+1, sizeof(unsigned char));
+    CPU.mUpperData   = calloc(128, sizeof(unsigned char));
+    CPU.except       = &emu_exception;
+    CPU.xread = NULL;
+    CPU.xwrite = NULL;
 
-    emu.sfrwrite[REG_SBUF] = emu_sfrwrite_SBUF;
+    CPU.sfrwrite[REG_SBUF] = emu_sfrwrite_SBUF;
 
-    emu.sfrread[REG_P0] = emu_sfrread;
-    emu.sfrread[REG_P1] = emu_sfrread;
-    emu.sfrread[REG_P2] = emu_sfrread;
-    emu.sfrread[REG_P3] = emu_sfrread;
+    CPU.sfrread[REG_P0] = emu_sfrread;
+    CPU.sfrread[REG_P1] = emu_sfrread;
+    CPU.sfrread[REG_P2] = emu_sfrread;
+    CPU.sfrread[REG_P3] = emu_sfrread;
 
-    reset(&emu, 1);
+    reset(1);
 
     if (parc > 1)
     {
@@ -413,7 +412,7 @@ int main(int parc, char ** pars)
             }
             else
             {
-                if (load_obj(&emu, pars[i]) != 0)
+                if (load_obj(pars[i]) != 0)
                 {
                     printf("File '%s' load failure\n\n",pars[i]);
                     return -1;
@@ -450,7 +449,7 @@ int main(int parc, char ** pars)
     noecho(); // no echoing
     keypad(stdscr, TRUE); // cursors entered as single characters
 
-    build_main_view(&emu);
+    build_main_view();
 
     // Loop until user hits 'shift-Q'
 
@@ -459,44 +458,44 @@ int main(int parc, char ** pars)
         if (LINES != oldrows ||
             COLS != oldcols)
         {
-            refreshview(&emu);
+            refreshview();
         }
         switch (ch)
         {
         case KEY_F(1):
-            change_view(&emu, 0);
+            change_view(0);
             break;
         case KEY_F(2):
-            change_view(&emu, 1);
+            change_view(1);
             break;
         case KEY_F(3):
-            change_view(&emu, 2);
+            change_view(2);
             break;
         case KEY_F(4):
-            change_view(&emu, 3);
+            change_view(3);
             break;
         case 'v':
-            change_view(&emu, (view + 1) % 4);
+            change_view((view + 1) % 4);
             break;
         case 'k':
             if (breakpoint != -1)
             {
                 breakpoint = -1;
-                emu_popup(&emu, "Breakpoint", "Breakpoint cleared.");
+                emu_popup("Breakpoint", "Breakpoint cleared.");
             }
             else
             {
-                breakpoint = emu_readvalue(&emu, "Set Breakpoint", emu.mPC, 4);
+                breakpoint = emu_readvalue("Set Breakpoint", CPU.mPC, 4);
             }
             break;
         case 'g':
-            emu.mPC = emu_readvalue(&emu, "Set Program Counter", emu.mPC, 4);
+            CPU.mPC = emu_readvalue("Set Program Counter", CPU.mPC, 4);
             break;
         case 'h':
-            emu_help(&emu);
+            emu_help();
             break;
         case 'l':
-            emu_load(&emu);
+            emu_load();
             break;
         case ' ':
             runmode = 0;
@@ -533,7 +532,7 @@ int main(int parc, char ** pars)
             setSpeed(speed, runmode);
             break;
         case KEY_HOME:
-            if (emu_reset(&emu))
+            if (emu_reset())
             {
                 clocks = 0;
                 ticked = 1;
@@ -541,11 +540,11 @@ int main(int parc, char ** pars)
             break;
         case 'z':
 	    // Equivalent of "R)eset (init regs, set PC to zero)"
-	    reset(&emu, 0);
+	    reset(0);
 	    break;
         case 'Z':
 	    // Equivalent of "W)ipe (init regs, set PC to zero, clear memory)"
-	    reset(&emu, 1);
+	    reset(1);
 	    break;
         case KEY_END:
             clocks = 0;
@@ -556,16 +555,16 @@ int main(int parc, char ** pars)
             switch (view)
             {
             case MAIN_VIEW:
-                mainview_editor_keys(&emu, ch);
+                mainview_editor_keys(ch);
                 break;
             case LOGICBOARD_VIEW:
-                logicboard_editor_keys(&emu, ch);
+                logicboard_editor_keys(ch);
                 break;
             case MEMEDITOR_VIEW:
-                memeditor_editor_keys(&emu, ch);
+                memeditor_editor_keys(ch);
                 break;
             case OPTIONS_VIEW:
-                options_editor_keys(&emu, ch);
+                options_editor_keys(ch);
                 break;
             }
             break;
@@ -592,7 +591,7 @@ int main(int parc, char ** pars)
             do
             {
                 int old_pc;
-                old_pc = emu.mPC;
+                old_pc = CPU.mPC;
                 if (opt_step_instruction)
                 {
                     ticked = 0;
@@ -600,20 +599,20 @@ int main(int parc, char ** pars)
                     {
                         targetclocks--;
                         clocks += 12;
-                        ticked = tick(&emu);
-                        logicboard_tick(&emu);
+                        ticked = tick();
+                        logicboard_tick();
                     }
                 }
                 else
                 {
                     targetclocks--;
                     clocks += 12;
-                    ticked = tick(&emu);
-                    logicboard_tick(&emu);
+                    ticked = tick();
+                    logicboard_tick();
                 }
 
-                if (emu.mPC == breakpoint)
-                    emu_exception(&emu, -1);
+                if (CPU.mPC == breakpoint)
+                    emu_exception(-1);
 
                 if (ticked)
                 {
@@ -621,8 +620,8 @@ int main(int parc, char ** pars)
 
                     historyline = (historyline + 1) % HISTORY_LINES;
 
-                    memcpy(history + (historyline * (128 + 64 + sizeof(int))), emu.mSFR, 128);
-                    memcpy(history + (historyline * (128 + 64 + sizeof(int))) + 128, emu.mLowerData, 64);
+                    memcpy(history + (historyline * (128 + 64 + sizeof(int))), CPU.mSFR, 128);
+                    memcpy(history + (historyline * (128 + 64 + sizeof(int))) + 128, CPU.mLowerData, 64);
                     memcpy(history + (historyline * (128 + 64 + sizeof(int))) + 128 + 64, &old_pc, sizeof(int));
                 }
             }
@@ -637,16 +636,16 @@ int main(int parc, char ** pars)
         switch (view)
         {
         case MAIN_VIEW:
-            mainview_update(&emu);
+            mainview_update();
             break;
         case LOGICBOARD_VIEW:
-            logicboard_update(&emu);
+            logicboard_update();
             break;
         case MEMEDITOR_VIEW:
-            memeditor_update(&emu);
+            memeditor_update();
             break;
         case OPTIONS_VIEW:
-            options_update(&emu);
+            options_update();
             break;
         }
     }

@@ -66,7 +66,7 @@ static void closeaudio(void)
     fclose(audioout);
 }
 
-void logicboard_tick(struct em8051 *aCPU)
+void logicboard_tick()
 {
     int i;
     if (logicmode == 2)
@@ -74,25 +74,25 @@ void logicboard_tick(struct em8051 *aCPU)
         for (i = 0; i < 4; i++)
         {
             int clockmask = 2 << (i * 2);
-            if ((oldports[0] & clockmask) == 0 && (aCPU->mSFR[REG_P0] & clockmask))
+            if ((oldports[0] & clockmask) == 0 && (CPU.mSFR[REG_P0] & clockmask))
             {
                 shiftregisters[i] <<= 1;
-                shiftregisters[i] |= (aCPU->mSFR[REG_P0] & (clockmask >> 1)) != 0;
+                shiftregisters[i] |= (CPU.mSFR[REG_P0] & (clockmask >> 1)) != 0;
             }
-            if ((oldports[1] & clockmask) == 0 && (aCPU->mSFR[REG_P1] & clockmask))
+            if ((oldports[1] & clockmask) == 0 && (CPU.mSFR[REG_P1] & clockmask))
             {
                 shiftregisters[i + 4] <<= 1;
-                shiftregisters[i + 4] |= (aCPU->mSFR[REG_P1] & (clockmask >> 1)) != 0;
+                shiftregisters[i + 4] |= (CPU.mSFR[REG_P1] & (clockmask >> 1)) != 0;
             }
-            if ((oldports[2] & clockmask) == 0 && (aCPU->mSFR[REG_P2] & clockmask))
+            if ((oldports[2] & clockmask) == 0 && (CPU.mSFR[REG_P2] & clockmask))
             {
                 shiftregisters[i + 8] <<= 1;
-                shiftregisters[i + 8] |= (aCPU->mSFR[REG_P2] & (clockmask >> 1)) != 0;
+                shiftregisters[i + 8] |= (CPU.mSFR[REG_P2] & (clockmask >> 1)) != 0;
             }
-            if ((oldports[3] & clockmask) == 0 && (aCPU->mSFR[REG_P3] & clockmask))
+            if ((oldports[3] & clockmask) == 0 && (CPU.mSFR[REG_P3] & clockmask))
             {
                 shiftregisters[i + 12] <<= 1;
-                shiftregisters[i + 12] |= (aCPU->mSFR[REG_P3] & (clockmask >> 1)) != 0;
+                shiftregisters[i + 12] |= (CPU.mSFR[REG_P3] & (clockmask >> 1)) != 0;
             }
         }
     }
@@ -104,15 +104,15 @@ void logicboard_tick(struct em8051 *aCPU)
 		if (chardisplaybusy > 0)
 			chardisplaybusy--;
 
-		if (((aCPU->mSFR[REG_P3] & 0x20) == 0x20) && 
+		if (((CPU.mSFR[REG_P3] & 0x20) == 0x20) &&
 			 ((oldports[3] & 0x80) == 0) &&
-			 ((aCPU->mSFR[REG_P3] & 0x80) != 0)) 
+			 ((CPU.mSFR[REG_P3] & 0x80) != 0))
 		{
 			// Read op
 			// - E level rises from low to high on read ops			
 
 
-			if (aCPU->mSFR[REG_P3] & 0x40)
+			if (CPU.mSFR[REG_P3] & 0x40)
 			{   // P3.6
 				// memory IO mode
 
@@ -168,33 +168,33 @@ void logicboard_tick(struct em8051 *aCPU)
 			}
 		}
 
-		if (((aCPU->mSFR[REG_P3] & 0x20) != 0x20) && 
+		if (((CPU.mSFR[REG_P3] & 0x20) != 0x20) &&
 			 ((oldports[3] & 0x80) != 0) &&
-			 ((aCPU->mSFR[REG_P3] & 0x80) == 0))
+			 ((CPU.mSFR[REG_P3] & 0x80) == 0))
 		{	// P3.7
 			// Write op
 			// - E level drops from high to low on write ops
 			
 			if (chardisplay4bmode == 0)
 			{
-				chardisplaydata = aCPU->mSFR[REG_P1];
+				chardisplaydata = CPU.mSFR[REG_P1];
 			}
 			else
 			{
 				if (!chardisplaytick)
 				{
-					chardisplaydata = (chardisplaydata & 0xf) | (aCPU->mSFR[REG_P1] & 0xf0);
+					chardisplaydata = (chardisplaydata & 0xf) | (CPU.mSFR[REG_P1] & 0xf0);
 				}
 				else
 				{
-					chardisplaydata = (chardisplaydata & 0xf0) | ((aCPU->mSFR[REG_P1] & 0xf0) >> 4);
+					chardisplaydata = (chardisplaydata & 0xf0) | ((CPU.mSFR[REG_P1] & 0xf0) >> 4);
 				}
 				chardisplaytick = !chardisplaytick;
 			}
 
 			if (!chardisplaytick || !chardisplay4bmode)
 			{
-				if (aCPU->mSFR[REG_P3] & 0x40)
+				if (CPU.mSFR[REG_P3] & 0x40)
 				{ // P3.6
 					if (!chardisplaybusy)
 					{
@@ -413,22 +413,22 @@ void logicboard_tick(struct em8051 *aCPU)
         audiotick++;
         if (audiotick > opt_clock_hz / (44100 * 12))
         {
-            fputc(aCPU->mSFR[REG_P3] & 0x80, audioout);
+            fputc(CPU.mSFR[REG_P3] & 0x80, audioout);
             audiotick -= opt_clock_hz / (44100 * 12);
         }
     }
-    oldports[0] = aCPU->mSFR[REG_P0];
-    oldports[1] = aCPU->mSFR[REG_P1];
-    oldports[2] = aCPU->mSFR[REG_P2];
-    oldports[3] = aCPU->mSFR[REG_P3];
+    oldports[0] = CPU.mSFR[REG_P0];
+    oldports[1] = CPU.mSFR[REG_P1];
+    oldports[2] = CPU.mSFR[REG_P2];
+    oldports[3] = CPU.mSFR[REG_P3];
 }
 
-static void logicboard_render_7segs(struct em8051 *aCPU)
+static void logicboard_render_7segs()
 {
-    int input1 = aCPU->mSFR[REG_P0];
-    int input2 = aCPU->mSFR[REG_P1];
-    int input3 = aCPU->mSFR[REG_P2];
-    int input4 = aCPU->mSFR[REG_P3];
+    int input1 = CPU.mSFR[REG_P0];
+    int input2 = CPU.mSFR[REG_P1];
+    int input3 = CPU.mSFR[REG_P2];
+    int input4 = CPU.mSFR[REG_P3];
     mvprintw(2, 40, " %c   %c   %c   %c ", " -"[(input4 >> 0)&1], " -"[(input3 >> 0)&1], " -"[(input2 >> 0)&1], " -"[(input1 >> 0)&1]);
     mvprintw(3, 40, "%c %c %c %c %c %c %c %c", " |"[(input4 >> 5)&1], " |"[(input4 >> 1)&1], " |"[(input3 >> 5)&1], " |"[(input3 >> 1)&1], " |"[(input2 >> 5)&1], " |"[(input2 >> 1)&1], " |"[(input1 >> 5)&1], " |"[(input1 >> 1)&1]);
     mvprintw(4, 40, " %c   %c   %c   %c ", " -"[(input4 >> 6)&1], " -"[(input3 >> 6)&1], " -"[(input2 >> 6)&1], " -"[(input1 >> 6)&1]);
@@ -533,14 +533,14 @@ void wipe_logicboard_view()
     logicboard_leavemode();
 }
 
-void build_logicboard_view(struct em8051 *aCPU)
+void build_logicboard_view()
 {
     erase();
     logicboard_entermode();
 }
 
 
-void logicboard_editor_keys(struct em8051 *aCPU, int ch)
+void logicboard_editor_keys(int ch)
 {
     int xorvalue = -1;
     switch (ch)
@@ -616,7 +616,7 @@ void logicboard_editor_keys(struct em8051 *aCPU, int ch)
     }
 }
 
-void logicboard_update(struct em8051 *aCPU)
+void logicboard_update()
 {
     char ledstate[]="_*";
     char swstate[]="01";
@@ -624,7 +624,7 @@ void logicboard_update(struct em8051 *aCPU)
     mvprintw( 1, 1, "Logic board view");
 
     mvprintw( 3, 5, "1 2 3 4 5 6 7 8");
-    data = aCPU->mSFR[REG_P0];
+    data = CPU.mSFR[REG_P0];
     mvprintw( 4, 2, "P0 %c %c %c %c %c %c %c %c",
         ledstate[(data>>7)&1],
         ledstate[(data>>6)&1],
@@ -646,7 +646,7 @@ void logicboard_update(struct em8051 *aCPU)
         swstate[(data>>1)&1],
         swstate[(data>>0)&1]);
 
-    data = aCPU->mSFR[REG_P1];
+    data = CPU.mSFR[REG_P1];
     mvprintw( 7, 2, "P1 %c %c %c %c %c %c %c %c",
         ledstate[(data>>7)&1],
         ledstate[(data>>6)&1],
@@ -668,7 +668,7 @@ void logicboard_update(struct em8051 *aCPU)
         swstate[(data>>1)&1],
         swstate[(data>>0)&1]);
 
-    data = aCPU->mSFR[REG_P2];
+    data = CPU.mSFR[REG_P2];
     mvprintw(10, 2, "P2 %c %c %c %c %c %c %c %c",
         ledstate[(data>>7)&1],
         ledstate[(data>>6)&1],
@@ -690,7 +690,7 @@ void logicboard_update(struct em8051 *aCPU)
         swstate[(data>>1)&1],
         swstate[(data>>0)&1]);
 
-    data = aCPU->mSFR[REG_P3];
+    data = CPU.mSFR[REG_P3];
     mvprintw(13, 2, "P3 %c %c %c %c %c %c %c %c",
         ledstate[(data>>7)&1],
         ledstate[(data>>6)&1],
@@ -740,7 +740,7 @@ void logicboard_update(struct em8051 *aCPU)
     switch (logicmode)
     {
     case 1:
-        logicboard_render_7segs(aCPU);
+        logicboard_render_7segs();
         break;
     case 2:
         logicboard_render_registers();

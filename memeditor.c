@@ -57,7 +57,7 @@ void wipe_memeditor_view()
     }
 }
 
-void build_memeditor_view(struct em8051 *aCPU)
+void build_memeditor_view()
 {
     erase();
     
@@ -67,7 +67,7 @@ void build_memeditor_view(struct em8051 *aCPU)
     mvwaddstr(eds[0].box, 0, 2, "Lower");
     eds[0].view = subwin(eds[0].box, eds[0].lines - 2, 38, 1, 1);
     eds[0].maxmem = 128;
-    eds[0].memarea = aCPU->mLowerData;
+    eds[0].memarea = CPU.mLowerData;
     eds[0].memviewoffset = 0;
 
     eds[1].lines = (LINES / 3);
@@ -75,11 +75,11 @@ void build_memeditor_view(struct em8051 *aCPU)
     box(eds[1].box,ACS_VLINE,ACS_HLINE);
     mvwaddstr(eds[1].box, 0, 2, "Upper");
     eds[1].view = subwin(eds[1].box, eds[1].lines - 2, 38, eds[0].lines + 1, 1);
-    if (aCPU->mUpperData)
+    if (CPU.mUpperData)
         eds[1].maxmem = 128;
     else
         eds[1].maxmem = 0;
-    eds[1].memarea = aCPU->mUpperData;
+    eds[1].memarea = CPU.mUpperData;
     eds[1].memviewoffset = 128;
 
     eds[2].lines = LINES - (eds[0].lines + eds[1].lines);
@@ -88,7 +88,7 @@ void build_memeditor_view(struct em8051 *aCPU)
     mvwaddstr(eds[2].box, 0, 2, "SFR");
     eds[2].view = subwin(eds[2].box, eds[2].lines - 2, 38, eds[0].lines + eds[1].lines + 1, 1);
     eds[2].maxmem = 128;
-    eds[2].memarea = aCPU->mSFR;
+    eds[2].memarea = CPU.mSFR;
     eds[2].memviewoffset = 128;
 
     eds[3].lines = LINES / 2;
@@ -96,8 +96,8 @@ void build_memeditor_view(struct em8051 *aCPU)
     box(eds[3].box,ACS_VLINE,ACS_HLINE);
     mvwaddstr(eds[3].box, 0, 2, "External");
     eds[3].view = subwin(eds[3].box, eds[3].lines - 2, 38, 1, 41);    
-    eds[3].maxmem = aCPU->mExtDataMaxIdx+1;
-    eds[3].memarea = aCPU->mExtData;
+    eds[3].maxmem = CPU.mExtDataMaxIdx+1;
+    eds[3].memarea = CPU.mExtData;
     eds[3].memviewoffset = 0;
 
     eds[4].lines = LINES / 2;
@@ -105,8 +105,8 @@ void build_memeditor_view(struct em8051 *aCPU)
     box(eds[4].box,ACS_VLINE,ACS_HLINE);
     mvwaddstr(eds[4].box, 0, 2, "ROM");
     eds[4].view = subwin(eds[4].box, eds[4].lines - 2, 38, eds[3].lines + 1, 41);
-    eds[4].maxmem = aCPU->mCodeMemMaxIdx+1;
-    eds[4].memarea = aCPU->mCodeMem;     
+    eds[4].maxmem = CPU.mCodeMemMaxIdx+1;
+    eds[4].memarea = CPU.mCodeMem;
     eds[4].memviewoffset = 0;
 
     // TODO: make sure cursorpos / memoffset are within legal values,
@@ -127,7 +127,7 @@ void build_memeditor_view(struct em8051 *aCPU)
     refresh();
 }
 
-void memeditor_editor_keys(struct em8051 *aCPU, int ch)
+void memeditor_editor_keys(int ch)
 {
     int insert_value = -1;
     switch(ch)
@@ -135,9 +135,9 @@ void memeditor_editor_keys(struct em8051 *aCPU, int ch)
     case KEY_NEXT:
     case '\t':
         focus++;
-        if (focus == 1 && aCPU->mUpperData == NULL) 
+        if (focus == 1 && CPU.mUpperData == NULL)
             focus++;
-        if (focus == 3 && aCPU->mExtData == NULL)
+        if (focus == 3 && CPU.mExtData == NULL)
             focus++;
         if (focus == 5)
             focus = 0;
@@ -237,7 +237,7 @@ void memeditor_editor_keys(struct em8051 *aCPU, int ch)
 
 #define MASK_PRINTABLES(x) (((x) > 31)?(((x) < 127)?(x):'.'):'.')
 
-void memeditor_update(struct em8051 *aCPU)
+void memeditor_update()
 {
     int i, j, bytevalue;
     for (i = 0; i < 5; i++)

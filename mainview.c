@@ -121,7 +121,7 @@ void wipe_main_view()
     delwin(miscview);
 }
 
-void build_main_view(struct em8051 *aCPU)
+void build_main_view()
 {
     erase();
 
@@ -197,85 +197,85 @@ void build_main_view(struct em8051 *aCPU)
 
     lastclock = icount - 8;
 
-    memarea = aCPU->mLowerData;
+    memarea = CPU.mLowerData;
 
 }
 
-int getregoutput(struct em8051 *aCPU, int pos)
+int getregoutput(int pos)
 {
-    int rx = 8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int rx = 8 * ((CPU.mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
     switch (pos)
     {
     case 0:
-        return aCPU->mSFR[REG_ACC];
+        return CPU.mSFR[REG_ACC];
     case 1:
-        return aCPU->mLowerData[rx + 0];
+        return CPU.mLowerData[rx + 0];
     case 2:
-        return aCPU->mLowerData[rx + 1];
+        return CPU.mLowerData[rx + 1];
     case 3:
-        return aCPU->mLowerData[rx + 2];
+        return CPU.mLowerData[rx + 2];
     case 4:
-        return aCPU->mLowerData[rx + 3];
+        return CPU.mLowerData[rx + 3];
     case 5:
-        return aCPU->mLowerData[rx + 4];
+        return CPU.mLowerData[rx + 4];
     case 6:
-        return aCPU->mLowerData[rx + 5];
+        return CPU.mLowerData[rx + 5];
     case 7:
-        return aCPU->mLowerData[rx + 6];
+        return CPU.mLowerData[rx + 6];
     case 8:
-        return aCPU->mLowerData[rx + 7];
+        return CPU.mLowerData[rx + 7];
     case 9:
-        return aCPU->mSFR[REG_B];
+        return CPU.mSFR[REG_B];
     case 10:
-        return aCPU->mSFR[REG_DPH] << 8 | aCPU->mSFR[REG_DPL];
+        return CPU.mSFR[REG_DPH] << 8 | CPU.mSFR[REG_DPL];
     }
     return 0;
 }
 
-void setregoutput(struct em8051 *aCPU, int pos, int val)
+void setregoutput(int pos, int val)
 {
-    int rx = 8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int rx = 8 * ((CPU.mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
     switch (pos)
     {
     case 0:
-        aCPU->mSFR[REG_ACC] = val;
+        CPU.mSFR[REG_ACC] = val;
         break;
     case 1:
-        aCPU->mLowerData[rx + 0] = val;
+        CPU.mLowerData[rx + 0] = val;
         break;
     case 2:
-        aCPU->mLowerData[rx + 1] = val;
+        CPU.mLowerData[rx + 1] = val;
         break;
     case 3:
-        aCPU->mLowerData[rx + 2] = val;
+        CPU.mLowerData[rx + 2] = val;
         break;
     case 4:
-        aCPU->mLowerData[rx + 3] = val;
+        CPU.mLowerData[rx + 3] = val;
         break;
     case 5:
-        aCPU->mLowerData[rx + 4] = val;
+        CPU.mLowerData[rx + 4] = val;
         break;
     case 6:
-        aCPU->mLowerData[rx + 5] = val;
+        CPU.mLowerData[rx + 5] = val;
         break;
     case 7:
-        aCPU->mLowerData[rx + 6] = val;
+        CPU.mLowerData[rx + 6] = val;
         break;
     case 8:
-        aCPU->mLowerData[rx + 7] = val;
+        CPU.mLowerData[rx + 7] = val;
         break;
     case 9:
-        aCPU->mSFR[REG_B] = val;
+        CPU.mSFR[REG_B] = val;
         break;
     case 10:
-        aCPU->mSFR[REG_DPH] = (val >> 8) & 0xff;
-        aCPU->mSFR[REG_DPL] = val & 0xff;
+        CPU.mSFR[REG_DPH] = (val >> 8) & 0xff;
+        CPU.mSFR[REG_DPL] = val & 0xff;
         break;
     }
 }
 
 
-void mainview_editor_keys(struct em8051 *aCPU, int ch)
+void mainview_editor_keys(int ch)
 {
     int insert_value = -1;
     int maxmem;
@@ -293,28 +293,28 @@ void mainview_editor_keys(struct em8051 *aCPU, int ch)
         memcursorpos = 0;
         memoffset = 0;
         memmode++;
-        if (memmode == 1 && aCPU->mUpperData == NULL) 
+        if (memmode == 1 && CPU.mUpperData == NULL)
             memmode++;
-        if (memmode == 3 && aCPU->mExtData == NULL)
+        if (memmode == 3 && CPU.mExtData == NULL)
             memmode++;
         if (memmode == 5)
             memmode = 0;
         switch (memmode)
         {
         case 0:
-            memarea = aCPU->mLowerData;
+            memarea = CPU.mLowerData;
             break;
         case 1:
-            memarea = aCPU->mUpperData;
+            memarea = CPU.mUpperData;
             break;
         case 2:
-            memarea = aCPU->mSFR;
+            memarea = CPU.mSFR;
             break;
         case 3:
-            memarea = aCPU->mExtData;
+            memarea = CPU.mExtData;
             break;
         case 4:
-            memarea = aCPU->mCodeMem;
+            memarea = CPU.mCodeMem;
             break;
         }
         mvwaddstr(rambox, 0, 4, memtypes[memmode]);
@@ -395,10 +395,10 @@ void mainview_editor_keys(struct em8051 *aCPU, int ch)
         maxmem = 128;
         break;
     case 3:
-        maxmem = aCPU->mExtDataMaxIdx+1;
+        maxmem = CPU.mExtDataMaxIdx+1;
         break;
     case 4:
-        maxmem = aCPU->mCodeMemMaxIdx+1;
+        maxmem = CPU.mCodeMemMaxIdx+1;
         break;
     }
 
@@ -416,15 +416,15 @@ void mainview_editor_keys(struct em8051 *aCPU, int ch)
         {
             if (cursorpos / 2 >= 10)
             {
-                int oldvalue = getregoutput(aCPU, 10);
-                setregoutput(aCPU, 10, (oldvalue & ~(0xf000 >> (4 * (cursorpos & 3)))) | (insert_value << (4 * (3 - (cursorpos & 3)))));
+                int oldvalue = getregoutput(10);
+                setregoutput(10, (oldvalue & ~(0xf000 >> (4 * (cursorpos & 3)))) | (insert_value << (4 * (3 - (cursorpos & 3)))));
             }
             else
             {
                 if (cursorpos & 1)
-                    setregoutput(aCPU, cursorpos / 2, (getregoutput(aCPU, cursorpos / 2) & 0xf0) | insert_value);
+                    setregoutput(cursorpos / 2, (getregoutput(cursorpos / 2) & 0xf0) | insert_value);
                 else
-                    setregoutput(aCPU, cursorpos / 2, (getregoutput(aCPU, cursorpos / 2) & 0x0f) | (insert_value << 4));
+                    setregoutput(cursorpos / 2, (getregoutput(cursorpos / 2) & 0x0f) | (insert_value << 4));
             }
             cursorpos++;
             if (cursorpos > 23)
@@ -461,30 +461,30 @@ void mainview_editor_keys(struct em8051 *aCPU, int ch)
 }
 
 
-void refresh_regoutput(struct em8051 *aCPU, int cursor)
+void refresh_regoutput(int cursor)
 {
-    int rx = 8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int rx = 8 * ((CPU.mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
     
     mvwprintw(regoutput, LINES-19, 0, "%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %04X",
-        aCPU->mSFR[REG_ACC],
-        aCPU->mLowerData[0 + rx],
-        aCPU->mLowerData[1 + rx],
-        aCPU->mLowerData[2 + rx],
-        aCPU->mLowerData[3 + rx],
-        aCPU->mLowerData[4 + rx],
-        aCPU->mLowerData[5 + rx],
-        aCPU->mLowerData[6 + rx],
-        aCPU->mLowerData[7 + rx],
-        aCPU->mSFR[REG_B],
-        (aCPU->mSFR[REG_DPH]<<8)|aCPU->mSFR[REG_DPL]);
+        CPU.mSFR[REG_ACC],
+        CPU.mLowerData[0 + rx],
+        CPU.mLowerData[1 + rx],
+        CPU.mLowerData[2 + rx],
+        CPU.mLowerData[3 + rx],
+        CPU.mLowerData[4 + rx],
+        CPU.mLowerData[5 + rx],
+        CPU.mLowerData[6 + rx],
+        CPU.mLowerData[7 + rx],
+        CPU.mSFR[REG_B],
+        (CPU.mSFR[REG_DPH]<<8)|CPU.mSFR[REG_DPL]);
 
     if (focus == 1 && cursor)
     {   
-        int bytevalue = getregoutput(aCPU, cursorpos / 2);
+        int bytevalue = getregoutput(cursorpos / 2);
         if (cursorpos / 2 == 10)
-            bytevalue = getregoutput(aCPU, 10) >> 8;
+            bytevalue = getregoutput(10) >> 8;
         if (cursorpos / 2 == 11)
-            bytevalue = getregoutput(aCPU, 10) & 0xff;
+            bytevalue = getregoutput(10) & 0xff;
         wattron(regoutput, A_REVERSE);
         wmove(regoutput, LINES-19, (cursorpos / 2) * 3 + (cursorpos & 1) - (cursorpos / 22));
         wprintw(regoutput,"%X", (bytevalue >> (4 * (!(cursorpos & 1)))) & 0xf);
@@ -492,7 +492,7 @@ void refresh_regoutput(struct em8051 *aCPU, int cursor)
     }
 }
 
-void mainview_update(struct em8051 *aCPU)
+void mainview_update()
 {
     int bytevalue = 0;
     int i;
@@ -523,12 +523,12 @@ void mainview_update(struct em8051 *aCPU)
             hoffs = (hline * (128 + 64 + sizeof(int)));
 
             memcpy(&old_pc, history + hoffs + 128 + 64, sizeof(int));
-            opcode_bytes = decode(aCPU, old_pc, assembly);
+            opcode_bytes = decode(old_pc, assembly);
             stringpos = 0;
             stringpos += sprintf(temp + stringpos,"\n%04X  ", old_pc & 0xffff);
             
             for (i = 0; i < opcode_bytes; i++)
-                stringpos += sprintf(temp + stringpos,"%02X ", aCPU->mCodeMem[(old_pc + i) & (aCPU->mCodeMemMaxIdx)]);
+                stringpos += sprintf(temp + stringpos,"%02X ", CPU.mCodeMem[(old_pc + i) & (CPU.mCodeMemMaxIdx)]);
             
             for (i = opcode_bytes; i < 3; i++)
                 stringpos += sprintf(temp + stringpos,"   ");
@@ -552,7 +552,7 @@ void mainview_update(struct em8051 *aCPU)
                 history[hoffs + REG_B],
                 (history[hoffs + REG_DPH]<<8)|history[hoffs + REG_DPL]);
             if (focus == 1)
-                refresh_regoutput(aCPU, 0);
+                refresh_regoutput(0);
             wprintw(regoutput,"%s",temp);
 
             sprintf(temp, "\n%d %d %d %d %d %d %d %d",
@@ -598,14 +598,14 @@ void mainview_update(struct em8051 *aCPU)
     wprintw(miscview, "HW     : Super8051 @%0.1fMHz\n", opt_clock_hz / (1000*1000.0f));
 
     // convert the buffer to printable chars
-    char serial_buffer[sizeof(aCPU->serial_out)];
+    char serial_buffer[sizeof(CPU.serial_out)];
     for (size_t i = 0; i < sizeof(serial_buffer); i ++) {
-        char c = aCPU->serial_out[i];
+        char c = CPU.serial_out[i];
         serial_buffer[i] = isprint(c) ? c : '_';
     }
     {
-        char c = aCPU->mSFR[REG_SBUF]; c = isprint(c) ? c : '_';
-        wprintw(miscview, "S%d %c=%02x: %18s", aCPU->serial_out_remaining_bits, c, aCPU->mSFR[REG_SBUF], serial_buffer);
+        char c = CPU.mSFR[REG_SBUF]; c = isprint(c) ? c : '_';
+        wprintw(miscview, "S%d %c=%02x: %18s", CPU.serial_out_remaining_bits, c, CPU.mSFR[REG_SBUF], serial_buffer);
     }
 
     werase(ramview);
@@ -626,7 +626,7 @@ void mainview_update(struct em8051 *aCPU)
         wattroff(ramview, A_REVERSE);
     }
 
-    refresh_regoutput(aCPU, 1);
+    refresh_regoutput(1);
 
     if (focus == 0)
     {
@@ -645,11 +645,11 @@ void mainview_update(struct em8051 *aCPU)
 
     if (focus == 1)
     {
-        bytevalue = getregoutput(aCPU, cursorpos / 2);
+        bytevalue = getregoutput(cursorpos / 2);
         if (cursorpos / 2 == 10)
-            bytevalue = (getregoutput(aCPU, 10) >> 8) & 0xff;
+            bytevalue = (getregoutput(10) >> 8) & 0xff;
         if (cursorpos / 2 == 11)
-            bytevalue = getregoutput(aCPU, 10) & 0xff;
+            bytevalue = getregoutput(10) & 0xff;
 
         mvwprintw(miscview, 0,0,"%s: %d %d %d %d %d %d %d %d", 
                 regtypes[cursorpos / 2],
@@ -665,11 +665,11 @@ void mainview_update(struct em8051 *aCPU)
 
     for (i = 0; i < 14; i++)
     {
-		int offset = (i + aCPU->mSFR[REG_SP]-7)&0xff;
+		int offset = (i + CPU.mSFR[REG_SP]-7)&0xff;
 		if (offset < 0x80)
-			wprintw(stackview," %02X\n", aCPU->mLowerData[offset]);
+			wprintw(stackview," %02X\n", CPU.mLowerData[offset]);
 		else
-			wprintw(stackview," %02X\n", aCPU->mUpperData[offset - 0x80]);
+			wprintw(stackview," %02X\n", CPU.mUpperData[offset - 0x80]);
     }
 
     if (speed != 0 || runmode == 0)

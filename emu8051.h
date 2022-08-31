@@ -31,32 +31,32 @@
 struct em8051;
 
 // Operation: returns number of ticks the operation should take
-typedef uint8_t (*em8051operation)(struct em8051 *aCPU);
+typedef uint8_t (*em8051operation)();
 
 // Decodes opcode at position, and fills the buffer with the assembler code. 
 // Returns how many bytes the opcode takes.
-typedef uint8_t (*em8051decoder)(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer);
+typedef uint8_t (*em8051decoder)(uint16_t aPosition, char *aBuffer);
 
 // Callback: some exceptional situation occurred. See EM8051_EXCEPTION enum, below
-typedef void (*em8051exception)(struct em8051 *aCPU, int aCode);
+typedef void (*em8051exception)(int aCode);
 
 // Callback: an SFR register is about to be read (not called for 'a' ops nor psw changes)
 // Default is to return the value in the SFR register. Ports may act differently.
-typedef uint8_t (*em8051sfrread)(struct em8051 *aCPU, uint8_t aRegister);
+typedef uint8_t (*em8051sfrread)(uint8_t aRegister);
 
 // Callback: an SFR register has changed (not called for 'a' ops)
 // Default is to do nothing
-typedef void (*em8051sfrwrite)(struct em8051 *aCPU, uint8_t aRegister);
+typedef void (*em8051sfrwrite)(uint8_t aRegister);
 
 // Callback: writing to external memory
 // Default is to update external memory
 // (can be used to control some peripherals)
-typedef void (*em8051xwrite)(struct em8051 *aCPU, uint16_t aAddress, uint8_t aValue);
+typedef void (*em8051xwrite)(uint16_t aAddress, uint8_t aValue);
 
 // Callback: reading from external memory
 // Default is to return the value in external memory 
 // (can be used to control some peripherals)
-typedef uint8_t (*em8051xread)(struct em8051 *aCPU, uint16_t aAddress);
+typedef uint8_t (*em8051xread)(uint16_t aAddress);
 
 
 struct em8051
@@ -92,28 +92,30 @@ struct em8051
     uint8_t serial_interrupt_trigger;
 };
 
+extern struct em8051 CPU;
+
 // set the emulator into reset state. Must be called before tick(), as
 // it also initializes the function pointers. aWipe tells whether to reset
 // all memory to zero.
-void reset(struct em8051 *aCPU, uint8_t aWipe);
+void reset(uint8_t aWipe);
 
 // run one emulator tick, or 12 hardware clock cycles.
 // returns 1 if a new operation was executed.
-uint8_t tick(struct em8051 *aCPU);
+uint8_t tick();
 
 // decode the next operation as character string.
 // buffer must be big enough (64 bytes is very safe). 
 // Returns length of opcode.
-uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer);
+uint8_t decode(uint16_t aPosition, char *aBuffer);
 
 // Load an intel hex format object file. Returns negative for errors.
-int load_obj(struct em8051 *aCPU, char *aFilename);
+int load_obj(char *aFilename);
 
 // Alternate way to execute an opcode (switch-structure instead of function pointers)
-uint8_t do_op(struct em8051 *aCPU);
+uint8_t do_op();
 
 // Internal: Pushes a value into stack
-void push_to_stack(struct em8051 *aCPU, uint8_t aValue);
+void push_to_stack(uint8_t aValue);
 
 
 // SFR register locations

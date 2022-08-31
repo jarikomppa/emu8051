@@ -36,7 +36,7 @@
 // store the object filename (Accessed through command line as well)
 char filename[256];
 
-void emu_popup(struct em8051 *aCPU, char *aTitle, char *aMessage)
+void emu_popup(char *aTitle, char *aMessage)
 {
     WINDOW * exc;
     nocbreak();
@@ -66,10 +66,10 @@ void emu_popup(struct em8051 *aCPU, char *aTitle, char *aMessage)
 
     getch();
     delwin(exc);
-    refreshview(aCPU);
+    refreshview();
 }
 
-void emu_exception(struct em8051 *aCPU, int aCode)
+void emu_exception(int aCode)
 {
     WINDOW * exc;
 
@@ -142,10 +142,10 @@ void emu_exception(struct em8051 *aCPU, int aCode)
 
     getch();
     delwin(exc);
-    change_view(aCPU, MAIN_VIEW);
+    change_view(MAIN_VIEW);
 }
 
-void emu_load(struct em8051 *aCPU)
+void emu_load()
 {
     WINDOW * exc;
     int pos = 0;
@@ -196,31 +196,31 @@ void emu_load(struct em8051 *aCPU)
         }
     }
 
-    result = load_obj(aCPU, filename);
+    result = load_obj(filename);
     delwin(exc);
-    refreshview(aCPU);
+    refreshview();
 
     switch (result)
     {
     case -1:
-        emu_popup(aCPU, "Load error", "File not found.");
+        emu_popup("Load error", "File not found.");
         break;
     case -2:
-        emu_popup(aCPU, "Load error", "Bad file format.");
+        emu_popup("Load error", "Bad file format.");
         break;
     case -3:
-        emu_popup(aCPU, "Load error", "Unsupported HEX file version.");
+        emu_popup("Load error", "Unsupported HEX file version.");
         break;
     case -4:
-        emu_popup(aCPU, "Load error", "Checksum failure.");
+        emu_popup("Load error", "Checksum failure.");
         break;
     case -5:
-        emu_popup(aCPU, "Load error", "No end of data marker found.");
+        emu_popup("Load error", "No end of data marker found.");
         break;
     }
 }
 
-int emu_readvalue(struct em8051 *aCPU, const char *aPrompt, int aOldvalue, int aValueSize)
+int emu_readvalue(const char *aPrompt, int aOldvalue, int aValueSize)
 {
     WINDOW * exc;
     int pos = 0;
@@ -276,7 +276,7 @@ int emu_readvalue(struct em8051 *aCPU, const char *aPrompt, int aOldvalue, int a
         {
             int currvalue = strtol(temp, NULL, 16);
             char assembly[64];
-            decode(aCPU, currvalue, assembly);
+            decode(currvalue, assembly);
             wmove(exc,2,5 + aValueSize);
             waddstr(exc, "                                        ");
             wmove(exc,2,5 + aValueSize);
@@ -310,11 +310,11 @@ int emu_readvalue(struct em8051 *aCPU, const char *aPrompt, int aOldvalue, int a
     while (ch != '\n');
 
     delwin(exc);
-    refreshview(aCPU);
+    refreshview();
     return strtol(temp, NULL, 16);
 }
 
-int emu_readhz(struct em8051 *aCPU, const char *aPrompt, int aOldvalue)
+int emu_readhz(const char *aPrompt, int aOldvalue)
 {
     WINDOW * exc;
     int pos = 0;
@@ -366,11 +366,11 @@ int emu_readhz(struct em8051 *aCPU, const char *aPrompt, int aOldvalue)
     while (ch != '\n');
 
     delwin(exc);
-    refreshview(aCPU);
+    refreshview();
     return strtol(temp, NULL, 10);
 }
 
-int emu_reset(struct em8051 *aCPU)
+int emu_reset()
 {
     WINDOW * exc;
     int ch = 0;
@@ -402,26 +402,26 @@ int emu_reset(struct em8051 *aCPU)
     {
     case 's':
     case 'S':
-        aCPU->mPC = 0;
+        CPU.mPC = 0;
         result = 1;
         break;
     case 'r':
     case 'R':
-        reset(aCPU, 0);
+        reset(0);
         result = 1;
         break;
     case 'w':
     case 'W':
-        reset(aCPU, 1);
+        reset(1);
         result = 1;
         break;
     }
     delwin(exc);
-    refreshview(aCPU);
+    refreshview();
     return result;
 }
 
-void emu_help(struct em8051 *aCPU)
+void emu_help()
 {
     WINDOW * exc;
 
@@ -466,5 +466,5 @@ void emu_help(struct em8051 *aCPU)
     getch();
 
     delwin(exc);
-    refreshview(aCPU);
+    refreshview();
 }
