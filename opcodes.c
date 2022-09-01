@@ -127,11 +127,11 @@ static void add_solve_flags(struct em8051 * aCPU, uint8_t value1, uint8_t value2
           (carry << PSW_C) | (auxcarry << PSW_AC) | (overflow << PSW_OV);
 }
 
-static void sub_solve_flags(struct em8051 * aCPU, uint8_t value1, uint8_t value2)
+static void sub_solve_flags(struct em8051 * aCPU, uint8_t value1, uint8_t value2, uint8_t acc)
 {
-    uint8_t carry = (((value1 & 255) - (value2 & 255)) >> 8) & 1;
-    uint8_t auxcarry = (((value1 & 7) - (value2 & 7)) >> 3) & 1;
-    uint8_t overflow = ((((value1 & 127) - (value2 & 127)) >> 7) & 1)^carry;
+    uint8_t carry = (((value1 & 255) - (value2 & 255) - acc) >> 8) & 1;
+    uint8_t auxcarry = (((value1 & 7) - (value2 & 7) - acc) >> 3) & 1;
+    uint8_t overflow = ((((value1 & 127) - (value2 & 127) - acc) >> 7) & 1)^carry;
     PSW = (PSW & ~(PSWMASK_C|PSWMASK_AC|PSWMASK_OV)) |
                           (carry << PSW_C) | (auxcarry << PSW_AC) | (overflow << PSW_OV);
 }
@@ -1074,7 +1074,7 @@ static uint8_t movc_a_indir_a_dptr(struct em8051 *aCPU)
 static uint8_t subb_a_imm(struct em8051 *aCPU)
 {
     uint8_t carry = CARRY;
-    sub_solve_flags(aCPU, ACC, OPERAND1 + carry);
+    sub_solve_flags(aCPU, ACC, OPERAND1, carry);
     ACC -= OPERAND1 + carry;
     PC += 2;
     return 0;
@@ -1083,9 +1083,9 @@ static uint8_t subb_a_imm(struct em8051 *aCPU)
 static uint8_t subb_a_mem(struct em8051 *aCPU)
 {
     uint8_t carry = CARRY;
-    uint8_t value = read_mem(aCPU, OPERAND1) + carry;
-    sub_solve_flags(aCPU, ACC, value);
-    ACC -= value;
+    uint8_t value = read_mem(aCPU, OPERAND1);
+    sub_solve_flags(aCPU, ACC, value, carry);
+    ACC -= value + carry;
 
     PC += 2;
     return 0;
@@ -1102,12 +1102,12 @@ static uint8_t subb_a_indir_rx(struct em8051 *aCPU)
             value = aCPU->mUpperData[address - 0x80];
         }
 
-        sub_solve_flags(aCPU, ACC, value);
-        ACC -= value;
+        sub_solve_flags(aCPU, ACC, value, carry);
+        ACC -= value + carry;
     }
     else
     {
-        sub_solve_flags(aCPU, ACC, aCPU->mLowerData[address] + carry);
+        sub_solve_flags(aCPU, ACC, aCPU->mLowerData[address], carry);
         ACC -= aCPU->mLowerData[address] + carry;
     }
     PC++;
@@ -1865,7 +1865,7 @@ static uint8_t subb_a_rx(struct em8051 *aCPU)
 {
     uint8_t rx = RX_ADDRESS;
     uint8_t carry = CARRY;
-    sub_solve_flags(aCPU, ACC, aCPU->mLowerData[rx] + carry);
+    sub_solve_flags(aCPU, ACC, aCPU->mLowerData[rx], carry);
     ACC -= aCPU->mLowerData[rx] + carry;
     PC++;
     return 0;
