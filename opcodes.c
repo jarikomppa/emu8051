@@ -112,24 +112,24 @@ static int pop_from_stack(struct em8051 *aCPU)
 }
 
 
-static void add_solve_flags(struct em8051 * aCPU, int value1, int value2, int acc)
+static void add_solve_flags(struct em8051 * aCPU, int value1, int value2, int cin)
 {
     /* Carry: overflow from 7th bit to 8th bit */
-    int carry = ((value1 & 255) + (value2 & 255) + acc) >> 8;
-    
+    int carry = ((value1 & 255) + (value2 & 255) + cin) >> 8;
+
     /* Auxiliary carry: overflow from 3th bit to 4th bit */
-    int auxcarry = ((value1 & 7) + (value2 & 7) + acc) >> 3;
-    
+    int auxcarry = ((value1 & 7) + (value2 & 7) + cin) >> 3;
+
     /* Overflow: overflow from 6th or 7th bit, but not both */
-    int overflow = (((value1 & 127) + (value2 & 127) + acc) >> 7)^carry;
-    
+    int overflow = (((value1 & 127) + (value2 & 127) + cin) >> 7)^carry;
+
     PSW = (PSW & ~(PSWMASK_C | PSWMASK_AC | PSWMASK_OV)) |
           (carry << PSW_C) | (auxcarry << PSW_AC) | (overflow << PSW_OV);
 }
 
 static void sub_solve_flags(struct em8051 * aCPU, int value1, int value2)
 {
-    int carry = (((value1 & 255) - (value2 & 255)) >> 8) & 1;
+    int carry = (((value1 & 255) - value2) >> 8) & 1;
     int auxcarry = (((value1 & 7) - (value2 & 7)) >> 3) & 1;
     int overflow = ((((value1 & 127) - (value2 & 127)) >> 7) & 1)^carry;
     PSW = (PSW & ~(PSWMASK_C|PSWMASK_AC|PSWMASK_OV)) |
