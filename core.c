@@ -39,7 +39,7 @@ static void serial_tx(struct em8051 *aCPU) {
 	       return;
 
 	aCPU->serial_out_remaining_bits--;
-	uint8_t tx_bit = (aCPU->mSFR[REG_SBUF] >> aCPU->serial_out_remaining_bits) & 0x01;
+	bool tx_bit = (aCPU->mSFR[REG_SBUF] >> aCPU->serial_out_remaining_bits);
 	// Set P3.1 according to the currently clocked out SERIAL bit
 	aCPU->mSFR[REG_P3] &= ~(1 << 1);
 	if (tx_bit) aCPU->mSFR[REG_P3] |= (1 << 1);
@@ -446,10 +446,10 @@ void handle_interrupts(struct em8051 *aCPU)
     aCPU->int_sp[hi] = aCPU->mSFR[REG_SP];
 }
 
-uint8_t tick(struct em8051 *aCPU)
+bool tick(struct em8051 *aCPU)
 {
     uint8_t v;
-    uint8_t ticked = 0;
+    bool ticked = false;
 
     if (aCPU->mTickDelay)
     {
@@ -474,13 +474,13 @@ uint8_t tick(struct em8051 *aCPU)
     if (aCPU->mTickDelay == 0)
     {
         // IDL activate the idle mode to save power
-        uint8_t is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
+        bool is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
         if (is_idle) {
             aCPU->mTickDelay = 1;
         } else {
             aCPU->mTickDelay = aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemMaxIdx)]](aCPU);
         }
-        ticked = 1;
+        ticked = true;
         // update parity bit
         v = aCPU->mSFR[REG_ACC];
         v ^= v >> 4;
@@ -496,12 +496,12 @@ uint8_t tick(struct em8051 *aCPU)
 
 uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer)
 {
-    uint8_t is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
+    bool is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
     if (is_idle) {
         sprintf(aBuffer, "IDLE");
         return 0;
     }
-    uint8_t is_powerdown = (aCPU->mSFR[REG_PCON]) & 0x02;
+    bool is_powerdown = (aCPU->mSFR[REG_PCON]) & 0x02;
     if (is_powerdown) {
         sprintf(aBuffer, "POWER DOWN");
         return 0;
@@ -512,7 +512,7 @@ uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer)
 void disasm_setptrs(struct em8051 *aCPU);
 void op_setptrs(struct em8051 *aCPU);
 
-void reset(struct em8051 *aCPU, uint8_t aWipe)
+void reset(struct em8051 *aCPU, bool aWipe)
 {
     // clear memory, set registers to bootup values, etc    
     if (aWipe)

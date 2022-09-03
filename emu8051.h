@@ -90,17 +90,17 @@ struct em8051
     char serial_out[18]; // The shown size is only 18 chars
     uint8_t serial_out_idx;
     uint8_t serial_out_remaining_bits;
-    uint8_t serial_interrupt_trigger;
+    bool serial_interrupt_trigger;
 };
 
 // set the emulator into reset state. Must be called before tick(), as
 // it also initializes the function pointers. aWipe tells whether to reset
 // all memory to zero.
-void reset(struct em8051 *aCPU, uint8_t aWipe);
+void reset(struct em8051 *aCPU, bool aWipe);
 
 // run one emulator tick, or 12 hardware clock cycles.
 // returns "true" if a new operation was executed.
-uint8_t tick(struct em8051 *aCPU);
+bool tick(struct em8051 *aCPU);
 
 // decode the next operation as character string.
 // buffer must be big enough (64 bytes is very safe). 
