@@ -5,7 +5,7 @@ BIN := emu
 
 CFLAGS += -O2
 CFLAGS += -pipe
-CFLAGS += -g -Wall -Wextra -Wno-unused-parameter
+CFLAGS += -g -Wall -Wextra -Wno-unused-parameter -Wshadow
 
 # Uncomment to activate LTO
 #CFLAGS += -flto

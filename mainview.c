@@ -599,9 +599,9 @@ void mainview_update(struct em8051 *aCPU)
 
     // convert the buffer to printable chars
     char serial_buffer[sizeof(aCPU->serial_out)];
-    for (size_t i = 0; i < sizeof(serial_buffer); i ++) {
-        char c = aCPU->serial_out[i];
-        serial_buffer[i] = isprint(c) ? c : '_';
+    for (size_t j = 0; j < sizeof(serial_buffer); j ++) {
+        char c = aCPU->serial_out[j];
+        serial_buffer[j] = isprint(c) ? c : '_';
     }
     {
         char c = aCPU->mSFR[REG_SBUF]; c = isprint(c) ? c : '_';
