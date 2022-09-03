@@ -208,8 +208,9 @@ static uint8_t inc_indir_rx(struct em8051 *aCPU)
 
 static uint8_t jbc_bitaddr_offset(struct em8051 *aCPU)
 {
-    // "Note: when this instruction is used to test an output pin, the value used 
-    // as the original data will be read from the output data latch, not the input pin"
+    // Note: when this instruction is used to test an output pin, the value used
+    // as the original data will be read from the output data latch, not the input pin
+    // -- MCS(r) 51 Microcontroller Family User's Manual
     uint8_t address = OPERAND1;
     if (address > 0x7f)
     {
@@ -1042,8 +1043,9 @@ static uint8_t mov_bitaddr_c(struct em8051 *aCPU)
     bool carry = CARRY;
     if (address > 0x7f)
     {
-        // Data sheet does not explicitly say that the modification source
-        // is read from output latch, but we'll assume that is what happens.
+        // Note: when this instruction is used to test an output pin, the value used
+        // as the original data will be read from the output data latch, not the input pin
+        // -- MCS(r) 51 Microcontroller Family User's Manual
         uint8_t bitaddr = address & 7;
         uint8_t bitmask = (1 << bitaddr);
         address &= 0xf8;        
@@ -1263,8 +1265,9 @@ static uint8_t cpl_bitaddr(struct em8051 *aCPU)
     uint8_t address = OPERAND1;
     if (address > 0x7f)
     {
-        // Data sheet does not explicitly say that the modification source
-        // is read from output latch, but we'll assume that is what happens.
+        // Note: when this instruction is used to test an output pin, the value used
+        // as the original data will be read from the output data latch, not the input pin
+        // -- MCS(r) 51 Microcontroller Family User's Manual
         uint8_t bitaddr = address & 7;
         uint8_t bitmask = (1 << bitaddr);
         address &= 0xf8;        
@@ -1401,8 +1404,9 @@ static uint8_t clr_bitaddr(struct em8051 *aCPU)
     uint8_t address = OPERAND1;
     if (address > 0x7f)
     {
-        // Data sheet does not explicitly say that the modification source
-        // is read from output latch, but we'll assume that is what happens.
+        // Note: when this instruction is used to test an output pin, the value used
+        // as the original data will be read from the output data latch, not the input pin
+        // -- MCS(r) 51 Microcontroller Family User's Manual
         uint8_t bitaddr = address & 7;
         uint8_t bitmask = (1 << bitaddr);
         address &= 0xf8;        
@@ -1503,8 +1507,9 @@ static uint8_t setb_bitaddr(struct em8051 *aCPU)
     uint8_t address = OPERAND1;
     if (address > 0x7f)
     {
-        // Data sheet does not explicitly say that the modification source
-        // is read from output latch, but we'll assume that is what happens.
+        // Note: when this instruction is used to test an output pin, the value used
+        // as the original data will be read from the output data latch, not the input pin
+        // -- MCS(r) 51 Microcontroller Family User's Manual
         uint8_t bitaddr = address & 7;
         uint8_t bitmask = (1 << bitaddr);
         address &= 0xf8;        
