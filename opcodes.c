@@ -112,26 +112,26 @@ static uint8_t pop_from_stack(struct em8051 *aCPU)
 }
 
 
-static void add_solve_flags(struct em8051 * aCPU, uint8_t value1, uint8_t value2, uint8_t carryin)
+static void add_solve_flags(struct em8051 * aCPU, uint8_t value1, uint8_t value2, bool carryin)
 {
     /* Carry: overflow from 7th bit to 8th bit */
-    uint8_t carry = ((value1 & 255) + (value2 & 255) + carryin) >> 8;
+    bool carry = ((value1 & 255) + (value2 & 255) + carryin) >> 8;
     
     /* Auxiliary carry: overflow from 3th bit to 4th bit */
-    uint8_t auxcarry = ((value1 & 7) + (value2 & 7) + carryin) >> 3;
+    bool auxcarry = ((value1 & 7) + (value2 & 7) + carryin) >> 3;
     
     /* Overflow: overflow from 6th or 7th bit, but not both */
-    uint8_t overflow = (((value1 & 127) + (value2 & 127) + carryin) >> 7)^carry;
+    bool overflow = (((value1 & 127) + (value2 & 127) + carryin) >> 7)^carry;
     
     PSW = (PSW & ~(PSWMASK_C | PSWMASK_AC | PSWMASK_OV)) |
           (carry << PSW_C) | (auxcarry << PSW_AC) | (overflow << PSW_OV);
 }
 
-static void sub_solve_flags(struct em8051 * aCPU, uint8_t value1, uint8_t value2, uint8_t carryin)
+static void sub_solve_flags(struct em8051 * aCPU, uint8_t value1, uint8_t value2, bool carryin)
 {
-    uint8_t carry = (((value1 & 255) - (value2 & 255) - carryin) >> 8) & 1;
-    uint8_t auxcarry = (((value1 & 7) - (value2 & 7) - carryin) >> 3) & 1;
-    uint8_t overflow = ((((value1 & 127) - (value2 & 127) - carryin) >> 7) & 1)^carry;
+    bool carry = (((value1 & 255) - (value2 & 255) - carryin) >> 8) & 1;
+    bool auxcarry = (((value1 & 7) - (value2 & 7) - carryin) >> 3) & 1;
+    bool overflow = ((((value1 & 127) - (value2 & 127) - carryin) >> 7) & 1)^carry;
     PSW = (PSW & ~(PSWMASK_C|PSWMASK_AC|PSWMASK_OV)) |
                           (carry << PSW_C) | (auxcarry << PSW_AC) | (overflow << PSW_OV);
 }
@@ -213,7 +213,7 @@ static uint8_t jbc_bitaddr_offset(struct em8051 *aCPU)
     uint8_t address = OPERAND1;
     if (address > 0x7f)
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         uint8_t value;
         address &= 0xf8;        
@@ -233,7 +233,7 @@ static uint8_t jbc_bitaddr_offset(struct em8051 *aCPU)
     }
     else
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         address >>= 3;
         address += 0x20;
@@ -326,7 +326,7 @@ static uint8_t jb_bitaddr_offset(struct em8051 *aCPU)
     uint8_t address = OPERAND1;
     if (address > 0x7f)
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         uint8_t value;
         address &= 0xf8;        
@@ -346,7 +346,7 @@ static uint8_t jb_bitaddr_offset(struct em8051 *aCPU)
     }
     else
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         address >>= 3;
         address += 0x20;
@@ -422,7 +422,7 @@ static uint8_t jnb_bitaddr_offset(struct em8051 *aCPU)
     uint8_t address = OPERAND1;
     if (address > 0x7f)
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         uint8_t value;
         address &= 0xf8;        
@@ -442,7 +442,7 @@ static uint8_t jnb_bitaddr_offset(struct em8051 *aCPU)
     }
     else
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         address >>= 3;
         address += 0x20;
@@ -489,8 +489,8 @@ static uint8_t reti(struct em8051 *aCPU)
 
 static uint8_t rlc_a(struct em8051 *aCPU)
 {
-    uint8_t carry = CARRY;
-    uint8_t new_carry = ACC >> 7;
+    bool carry = CARRY;
+    bool new_carry = ACC >> 7;
     ACC = (ACC << 1) | carry;
     PSW = (PSW & ~PSWMASK_C) | (new_carry << PSW_C);
     PC++;
@@ -499,7 +499,7 @@ static uint8_t rlc_a(struct em8051 *aCPU)
 
 static uint8_t addc_a_imm(struct em8051 *aCPU)
 {
-    uint8_t carry = CARRY;
+    bool carry = CARRY;
     add_solve_flags(aCPU, ACC, OPERAND1, carry);
     ACC += OPERAND1 + carry;
     PC += 2;
@@ -508,7 +508,7 @@ static uint8_t addc_a_imm(struct em8051 *aCPU)
 
 static uint8_t addc_a_mem(struct em8051 *aCPU)
 {
-    uint8_t carry = CARRY;
+    bool carry = CARRY;
     uint8_t value = read_mem(aCPU, OPERAND1);
     add_solve_flags(aCPU, ACC, value, carry);
     ACC += value + carry;
@@ -518,7 +518,7 @@ static uint8_t addc_a_mem(struct em8051 *aCPU)
 
 static uint8_t addc_a_indir_rx(struct em8051 *aCPU)
 {
-    uint8_t carry = CARRY;
+    bool carry = CARRY;
     uint8_t address = INDIR_RX_ADDRESS;
     if (address > 0x7f)
     {
@@ -811,10 +811,10 @@ static uint8_t jnz_offset(struct em8051 *aCPU)
 static uint8_t orl_c_bitaddr(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    uint8_t carry = CARRY;
+    bool carry = CARRY;
     if (address > 0x7f)
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         uint8_t value;
         address &= 0xf8;        
@@ -829,7 +829,7 @@ static uint8_t orl_c_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         uint8_t value;
         address >>= 3;
@@ -902,10 +902,10 @@ static uint8_t sjmp_offset(struct em8051 *aCPU)
 static uint8_t anl_c_bitaddr(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    uint8_t carry = CARRY;
+    bool carry = CARRY;
     if (address > 0x7f)
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         uint8_t value;
         address &= 0xf8;        
@@ -920,7 +920,7 @@ static uint8_t anl_c_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         uint8_t value;
         address >>= 3;
@@ -1039,12 +1039,12 @@ static uint8_t mov_dptr_imm(struct em8051 *aCPU)
 static uint8_t mov_bitaddr_c(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    uint8_t carry = CARRY;
+    bool carry = CARRY;
     if (address > 0x7f)
     {
         // Data sheet does not explicitly say that the modification source
         // is read from output latch, but we'll assume that is what happens.
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         address &= 0xf8;        
         aCPU->mSFR[address - 0x80] = (aCPU->mSFR[address - 0x80] & ~bitmask) | (carry << bit);
@@ -1053,7 +1053,7 @@ static uint8_t mov_bitaddr_c(struct em8051 *aCPU)
     }
     else
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         address >>= 3;
         address += 0x20;
@@ -1073,7 +1073,7 @@ static uint8_t movc_a_indir_a_dptr(struct em8051 *aCPU)
 
 static uint8_t subb_a_imm(struct em8051 *aCPU)
 {
-    uint8_t carry = CARRY;
+    bool carry = CARRY;
     sub_solve_flags(aCPU, ACC, OPERAND1, carry);
     ACC -= OPERAND1 + carry;
     PC += 2;
@@ -1082,7 +1082,7 @@ static uint8_t subb_a_imm(struct em8051 *aCPU)
 
 static uint8_t subb_a_mem(struct em8051 *aCPU)
 {
-    uint8_t carry = CARRY;
+    bool carry = CARRY;
     uint8_t value = read_mem(aCPU, OPERAND1);
     sub_solve_flags(aCPU, ACC, value, carry);
     ACC -= value + carry;
@@ -1092,7 +1092,7 @@ static uint8_t subb_a_mem(struct em8051 *aCPU)
 }
 static uint8_t subb_a_indir_rx(struct em8051 *aCPU)
 {
-    uint8_t carry = CARRY;
+    bool carry = CARRY;
     uint8_t address = INDIR_RX_ADDRESS;
     if (address > 0x7f)
     {
@@ -1118,10 +1118,10 @@ static uint8_t subb_a_indir_rx(struct em8051 *aCPU)
 static uint8_t orl_c_compl_bitaddr(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    uint8_t carry = CARRY;
+    bool carry = CARRY;
     if (address > 0x7f)
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         uint8_t value;
         address &= 0xf8;        
@@ -1136,7 +1136,7 @@ static uint8_t orl_c_compl_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         uint8_t value;
         address >>= 3;
@@ -1153,7 +1153,7 @@ static uint8_t mov_c_bitaddr(struct em8051 *aCPU)
     uint8_t address = OPERAND1;
     if (address > 0x7f)
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         uint8_t value;
         address &= 0xf8;        
@@ -1168,7 +1168,7 @@ static uint8_t mov_c_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         uint8_t value;
         address >>= 3;
@@ -1227,10 +1227,10 @@ static uint8_t mov_indir_rx_mem(struct em8051 *aCPU)
 static uint8_t anl_c_compl_bitaddr(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    uint8_t carry = CARRY;
+    bool carry = CARRY;
     if (address > 0x7f)
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         uint8_t value;
         address &= 0xf8;        
@@ -1245,7 +1245,7 @@ static uint8_t anl_c_compl_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         uint8_t value;
         address >>= 3;
@@ -1265,7 +1265,7 @@ static uint8_t cpl_bitaddr(struct em8051 *aCPU)
     {
         // Data sheet does not explicitly say that the modification source
         // is read from output latch, but we'll assume that is what happens.
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         address &= 0xf8;        
         aCPU->mSFR[address - 0x80] ^= bitmask;
@@ -1274,7 +1274,7 @@ static uint8_t cpl_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         address >>= 3;
         address += 0x20;
@@ -1403,7 +1403,7 @@ static uint8_t clr_bitaddr(struct em8051 *aCPU)
     {
         // Data sheet does not explicitly say that the modification source
         // is read from output latch, but we'll assume that is what happens.
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         address &= 0xf8;        
         aCPU->mSFR[address - 0x80] &= ~bitmask;
@@ -1412,7 +1412,7 @@ static uint8_t clr_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         address >>= 3;
         address += 0x20;
@@ -1505,7 +1505,7 @@ static uint8_t setb_bitaddr(struct em8051 *aCPU)
     {
         // Data sheet does not explicitly say that the modification source
         // is read from output latch, but we'll assume that is what happens.
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         address &= 0xf8;        
         aCPU->mSFR[address - 0x80] |= bitmask;
@@ -1514,7 +1514,7 @@ static uint8_t setb_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        uint8_t bit = address & 7;
+        bool bit = address & 7;
         uint8_t bitmask = (1 << bit);
         address >>= 3;
         address += 0x20;
@@ -1803,7 +1803,7 @@ static uint8_t add_a_rx(struct em8051 *aCPU)
 static uint8_t addc_a_rx(struct em8051 *aCPU)
 {
     uint8_t rx = RX_ADDRESS;
-    uint8_t carry = CARRY;
+    bool carry = CARRY;
     add_solve_flags(aCPU, aCPU->mLowerData[rx], ACC, carry);
     ACC += aCPU->mLowerData[rx] + carry;
     PC++;
@@ -1864,7 +1864,7 @@ static uint8_t mov_mem_rx(struct em8051 *aCPU)
 static uint8_t subb_a_rx(struct em8051 *aCPU)
 {
     uint8_t rx = RX_ADDRESS;
-    uint8_t carry = CARRY;
+    bool carry = CARRY;
     sub_solve_flags(aCPU, ACC, aCPU->mLowerData[rx], carry);
     ACC -= aCPU->mLowerData[rx] + carry;
     PC++;

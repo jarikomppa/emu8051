@@ -27,6 +27,7 @@
  */
 
 #include <stdint.h>
+#include <stdbool.h>
 
 struct em8051;
 
@@ -98,7 +99,7 @@ struct em8051
 void reset(struct em8051 *aCPU, uint8_t aWipe);
 
 // run one emulator tick, or 12 hardware clock cycles.
-// returns 1 if a new operation was executed.
+// returns "true" if a new operation was executed.
 uint8_t tick(struct em8051 *aCPU);
 
 // decode the next operation as character string.
