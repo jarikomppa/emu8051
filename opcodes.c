@@ -213,8 +213,8 @@ static uint8_t jbc_bitaddr_offset(struct em8051 *aCPU)
     uint8_t address = OPERAND1;
     if (address > 0x7f)
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         uint8_t value;
         address &= 0xf8;        
         value = aCPU->mSFR[address - 0x80];
@@ -233,8 +233,8 @@ static uint8_t jbc_bitaddr_offset(struct em8051 *aCPU)
     }
     else
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         address >>= 3;
         address += 0x20;
         if (aCPU->mLowerData[address] & bitmask)
@@ -326,8 +326,8 @@ static uint8_t jb_bitaddr_offset(struct em8051 *aCPU)
     uint8_t address = OPERAND1;
     if (address > 0x7f)
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         uint8_t value;
         address &= 0xf8;        
         if (aCPU->sfrread[address - 0x80])
@@ -346,8 +346,8 @@ static uint8_t jb_bitaddr_offset(struct em8051 *aCPU)
     }
     else
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         address >>= 3;
         address += 0x20;
         if (aCPU->mLowerData[address] & bitmask)
@@ -422,8 +422,8 @@ static uint8_t jnb_bitaddr_offset(struct em8051 *aCPU)
     uint8_t address = OPERAND1;
     if (address > 0x7f)
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         uint8_t value;
         address &= 0xf8;        
         if (aCPU->sfrread[address - 0x80])
@@ -442,8 +442,8 @@ static uint8_t jnb_bitaddr_offset(struct em8051 *aCPU)
     }
     else
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         address >>= 3;
         address += 0x20;
         if (!(aCPU->mLowerData[address] & bitmask))
@@ -814,8 +814,8 @@ static uint8_t orl_c_bitaddr(struct em8051 *aCPU)
     bool carry = CARRY;
     if (address > 0x7f)
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         uint8_t value;
         address &= 0xf8;        
         if (aCPU->sfrread[address - 0x80])
@@ -829,8 +829,8 @@ static uint8_t orl_c_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         uint8_t value;
         address >>= 3;
         address += 0x20;
@@ -905,8 +905,8 @@ static uint8_t anl_c_bitaddr(struct em8051 *aCPU)
     bool carry = CARRY;
     if (address > 0x7f)
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         uint8_t value;
         address &= 0xf8;        
         if (aCPU->sfrread[address - 0x80])
@@ -920,8 +920,8 @@ static uint8_t anl_c_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         uint8_t value;
         address >>= 3;
         address += 0x20;
@@ -1044,20 +1044,20 @@ static uint8_t mov_bitaddr_c(struct em8051 *aCPU)
     {
         // Data sheet does not explicitly say that the modification source
         // is read from output latch, but we'll assume that is what happens.
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         address &= 0xf8;        
-        aCPU->mSFR[address - 0x80] = (aCPU->mSFR[address - 0x80] & ~bitmask) | (carry << bit);
+        aCPU->mSFR[address - 0x80] = (aCPU->mSFR[address - 0x80] & ~bitmask) | (carry << bitaddr);
         if (aCPU->sfrwrite[address - 0x80])
             aCPU->sfrwrite[address - 0x80](aCPU, address);
     }
     else
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         address >>= 3;
         address += 0x20;
-        aCPU->mLowerData[address] = (aCPU->mLowerData[address] & ~bitmask) | (carry << bit);
+        aCPU->mLowerData[address] = (aCPU->mLowerData[address] & ~bitmask) | (carry << bitaddr);
     }
     PC += 2;
     return 1;
@@ -1121,8 +1121,8 @@ static uint8_t orl_c_compl_bitaddr(struct em8051 *aCPU)
     bool carry = CARRY;
     if (address > 0x7f)
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         uint8_t value;
         address &= 0xf8;        
         if (aCPU->sfrread[address - 0x80])
@@ -1136,8 +1136,8 @@ static uint8_t orl_c_compl_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         uint8_t value;
         address >>= 3;
         address += 0x20;
@@ -1153,8 +1153,8 @@ static uint8_t mov_c_bitaddr(struct em8051 *aCPU)
     uint8_t address = OPERAND1;
     if (address > 0x7f)
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         uint8_t value;
         address &= 0xf8;        
         if (aCPU->sfrread[address - 0x80])
@@ -1168,8 +1168,8 @@ static uint8_t mov_c_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         uint8_t value;
         address >>= 3;
         address += 0x20;
@@ -1230,8 +1230,8 @@ static uint8_t anl_c_compl_bitaddr(struct em8051 *aCPU)
     bool carry = CARRY;
     if (address > 0x7f)
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         uint8_t value;
         address &= 0xf8;        
         if (aCPU->sfrread[address - 0x80])
@@ -1245,8 +1245,8 @@ static uint8_t anl_c_compl_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         uint8_t value;
         address >>= 3;
         address += 0x20;
@@ -1265,8 +1265,8 @@ static uint8_t cpl_bitaddr(struct em8051 *aCPU)
     {
         // Data sheet does not explicitly say that the modification source
         // is read from output latch, but we'll assume that is what happens.
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         address &= 0xf8;        
         aCPU->mSFR[address - 0x80] ^= bitmask;
         if (aCPU->sfrwrite[address - 0x80])
@@ -1274,8 +1274,8 @@ static uint8_t cpl_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         address >>= 3;
         address += 0x20;
         aCPU->mLowerData[address] ^= bitmask;
@@ -1403,8 +1403,8 @@ static uint8_t clr_bitaddr(struct em8051 *aCPU)
     {
         // Data sheet does not explicitly say that the modification source
         // is read from output latch, but we'll assume that is what happens.
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         address &= 0xf8;        
         aCPU->mSFR[address - 0x80] &= ~bitmask;
         if (aCPU->sfrwrite[address - 0x80])
@@ -1412,8 +1412,8 @@ static uint8_t clr_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         address >>= 3;
         address += 0x20;
         aCPU->mLowerData[address] &= ~bitmask;
@@ -1505,8 +1505,8 @@ static uint8_t setb_bitaddr(struct em8051 *aCPU)
     {
         // Data sheet does not explicitly say that the modification source
         // is read from output latch, but we'll assume that is what happens.
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         address &= 0xf8;        
         aCPU->mSFR[address - 0x80] |= bitmask;
         if (aCPU->sfrwrite[address - 0x80])
@@ -1514,8 +1514,8 @@ static uint8_t setb_bitaddr(struct em8051 *aCPU)
     }
     else
     {
-        bool bit = address & 7;
-        uint8_t bitmask = (1 << bit);
+        uint8_t bitaddr = address & 7;
+        uint8_t bitmask = (1 << bitaddr);
         address >>= 3;
         address += 0x20;
         aCPU->mLowerData[address] |= bitmask;
