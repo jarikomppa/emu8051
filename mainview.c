@@ -295,7 +295,7 @@ void mainview_editor_keys(struct em8051 *aCPU, int ch)
         memmode++;
         if (memmode == 1 && aCPU->mUpperData == NULL) 
             memmode++;
-        if (memmode == 3 && aCPU->mExtDataSize == 0)
+        if (memmode == 3 && aCPU->mExtData == NULL)
             memmode++;
         if (memmode == 5)
             memmode = 0;
@@ -395,10 +395,10 @@ void mainview_editor_keys(struct em8051 *aCPU, int ch)
         maxmem = 128;
         break;
     case 3:
-        maxmem = aCPU->mExtDataSize;
+        maxmem = aCPU->mExtDataMaxIdx+1;
         break;
     case 4:
-        maxmem = aCPU->mCodeMemSize;
+        maxmem = aCPU->mCodeMemMaxIdx+1;
         break;
     }
 
@@ -528,7 +528,7 @@ void mainview_update(struct em8051 *aCPU)
             stringpos += sprintf(temp + stringpos,"\n%04X  ", old_pc & 0xffff);
             
             for (i = 0; i < opcode_bytes; i++)
-                stringpos += sprintf(temp + stringpos,"%02X ", aCPU->mCodeMem[(old_pc + i) & (aCPU->mCodeMemSize - 1)]);
+                stringpos += sprintf(temp + stringpos,"%02X ", aCPU->mCodeMem[(old_pc + i) & (aCPU->mCodeMemMaxIdx)]);
             
             for (i = opcode_bytes; i < 3; i++)
                 stringpos += sprintf(temp + stringpos,"   ");

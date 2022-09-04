@@ -39,7 +39,7 @@ static void serial_tx(struct em8051 *aCPU) {
 	       return;
 
 	aCPU->serial_out_remaining_bits--;
-	int tx_bit = (aCPU->mSFR[REG_SBUF] >> aCPU->serial_out_remaining_bits) & 0x01;
+	bool tx_bit = (aCPU->mSFR[REG_SBUF] >> aCPU->serial_out_remaining_bits);
 	// Set P3.1 according to the currently clocked out SERIAL bit
 	aCPU->mSFR[REG_P3] &= ~(1 << 1);
 	if (tx_bit) aCPU->mSFR[REG_P3] |= (1 << 1);
@@ -56,8 +56,8 @@ static void serial_tx(struct em8051 *aCPU) {
 
 static void timer_tick(struct em8051 *aCPU)
 {
-    int increment;
-    int v;
+    uint8_t increment;
+    uint16_t v;
 
     // TODO: External int 0 flag
 
@@ -309,9 +309,9 @@ static void timer_tick(struct em8051 *aCPU)
 
 void handle_interrupts(struct em8051 *aCPU)
 {
-    int dest_ip = -1;
-    int hi = 0;
-    int lo = 0;
+    int16_t dest_ip = -1;
+    uint8_t hi = 0;
+    uint8_t lo = 0;
 
     // can't interrupt high level
     if (aCPU->mInterruptActive > 1) 
@@ -446,10 +446,10 @@ void handle_interrupts(struct em8051 *aCPU)
     aCPU->int_sp[hi] = aCPU->mSFR[REG_SP];
 }
 
-int tick(struct em8051 *aCPU)
+bool tick(struct em8051 *aCPU)
 {
-    int v;
-    int ticked = 0;
+    uint8_t v;
+    bool ticked = false;
 
     if (aCPU->mTickDelay)
     {
@@ -474,13 +474,13 @@ int tick(struct em8051 *aCPU)
     if (aCPU->mTickDelay == 0)
     {
         // IDL activate the idle mode to save power
-        int is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
+        bool is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
         if (is_idle) {
             aCPU->mTickDelay = 1;
         } else {
-            aCPU->mTickDelay = aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemSize - 1)]](aCPU);
+            aCPU->mTickDelay = aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemMaxIdx)]](aCPU);
         }
-        ticked = 1;
+        ticked = true;
         // update parity bit
         v = aCPU->mSFR[REG_ACC];
         v ^= v >> 4;
@@ -494,31 +494,31 @@ int tick(struct em8051 *aCPU)
     return ticked;
 }
 
-int decode(struct em8051 *aCPU, int aPosition, char *aBuffer)
+uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer)
 {
-    int is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
+    bool is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
     if (is_idle) {
         sprintf(aBuffer, "IDLE");
         return 0;
     }
-    int is_powerdown = (aCPU->mSFR[REG_PCON]) & 0x02;
+    bool is_powerdown = (aCPU->mSFR[REG_PCON]) & 0x02;
     if (is_powerdown) {
         sprintf(aBuffer, "POWER DOWN");
         return 0;
     }
-    return aCPU->dec[aCPU->mCodeMem[aPosition & (aCPU->mCodeMemSize - 1)]](aCPU, aPosition, aBuffer);
+    return aCPU->dec[aCPU->mCodeMem[aPosition & (aCPU->mCodeMemMaxIdx)]](aCPU, aPosition, aBuffer);
 }
 
 void disasm_setptrs(struct em8051 *aCPU);
 void op_setptrs(struct em8051 *aCPU);
 
-void reset(struct em8051 *aCPU, int aWipe)
+void reset(struct em8051 *aCPU, bool aWipe)
 {
     // clear memory, set registers to bootup values, etc    
     if (aWipe)
     {
-        memset(aCPU->mCodeMem, 0, aCPU->mCodeMemSize);
-        memset(aCPU->mExtData, 0, aCPU->mExtDataSize);
+        memset(aCPU->mCodeMem, 0, aCPU->mCodeMemMaxIdx+1);
+        memset(aCPU->mExtData, 0, aCPU->mExtDataMaxIdx+1);
         memset(aCPU->mLowerData, 0, 128);
         if (aCPU->mUpperData) 
             memset(aCPU->mUpperData, 0, 128);
