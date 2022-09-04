@@ -92,9 +92,9 @@ void emu_sleep(int value)
 #endif
 }
 
-void setSpeed(int speed, int runmode)
+void setSpeed(int aSpeed, int aRunmode)
 {
-    switch (speed)
+    switch (aSpeed)
     {
     case 7:
         slk_set(5, "+/-|.5Hz", 0);
@@ -122,7 +122,7 @@ void setSpeed(int speed, int runmode)
         break;
     }
 
-    if (runmode == 0)
+    if (aRunmode == 0)
     {
         slk_set(4, "r)un", 0);
         slk_refresh();
@@ -137,7 +137,7 @@ void setSpeed(int speed, int runmode)
         slk_refresh();
     }
 
-    if (speed < 4)
+    if (aSpeed < 4)
     {
         nocbreak();
         cbreak();
@@ -145,7 +145,7 @@ void setSpeed(int speed, int runmode)
     }
     else
     {
-        switch(speed)
+        switch(aSpeed)
         {
         case 7:
             halfdelay(20);
