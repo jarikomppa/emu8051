@@ -508,9 +508,6 @@ uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer)
     return aCPU->dec[aCPU->mCodeMem[aPosition & (aCPU->mCodeMemMaxIdx)]](aCPU, aPosition, aBuffer);
 }
 
-void disasm_setptrs(struct em8051 *aCPU);
-void op_setptrs(struct em8051 *aCPU);
-
 void reset(struct em8051 *aCPU, bool aWipe)
 {
     // clear memory, set registers to bootup values, etc    
@@ -544,9 +541,6 @@ void reset(struct em8051 *aCPU, bool aWipe)
         aCPU->mSFR[REG_SBUF] = rand();
 
     // build function pointer lists
-
-    disasm_setptrs(aCPU);
-    op_setptrs(aCPU);
 
     // Clean internal variables
     aCPU->mInterruptActive = 0;

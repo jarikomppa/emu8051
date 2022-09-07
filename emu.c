@@ -272,6 +272,9 @@ void change_view(struct em8051 *aCPU, int changeto)
     }
 }
 
+void disasm_setptrs(struct em8051 *aCPU);
+void op_setptrs(struct em8051 *aCPU);
+
 int main(int parc, char ** pars)
 {
     int ch = 0;
@@ -295,6 +298,9 @@ int main(int parc, char ** pars)
     emu.sfrread[REG_P1] = emu_sfrread;
     emu.sfrread[REG_P2] = emu_sfrread;
     emu.sfrread[REG_P3] = emu_sfrread;
+
+    disasm_setptrs(&emu);
+    op_setptrs(&emu);
 
     reset(&emu, 1);
 
