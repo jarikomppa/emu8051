@@ -28,7 +28,6 @@
 
 #define T0_MODE3_MASK (TMODMASK_M0_0 | TMODMASK_M1_0)
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "emu8051.h"
@@ -498,12 +497,12 @@ uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer)
 {
     bool is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
     if (is_idle) {
-        sprintf(aBuffer, "IDLE");
+        strcpy(aBuffer, "IDLE");
         return 0;
     }
     bool is_powerdown = (aCPU->mSFR[REG_PCON]) & 0x02;
     if (is_powerdown) {
-        sprintf(aBuffer, "POWER DOWN");
+        strcpy(aBuffer, "POWER DOWN");
         return 0;
     }
     return aCPU->dec[aCPU->mCodeMem[aPosition & (aCPU->mCodeMemMaxIdx)]](aCPU, aPosition, aBuffer);
