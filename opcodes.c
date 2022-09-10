@@ -62,25 +62,56 @@ static uint8_t read_mem(struct em8051 *aCPU, uint8_t aAddress)
     }
 }
 
-void push_to_stack(struct em8051 *aCPU, uint8_t aValue)
+static uint8_t read_mem_indir(struct em8051 *aCPU, uint8_t aAddress)
 {
-    aCPU->mSFR[REG_SP]++;
-    if (aCPU->mSFR[REG_SP] > 0x7f)
+    if (aAddress > 0x7f)
     {
-        if (aCPU->mUpperData)
-        {
-            UPRDATA(aCPU->mSFR[REG_SP]) = aValue;
-        }
-        else
-        {
-            if (aCPU->except)
-                aCPU->except(aCPU, EXCEPTION_STACK);
-        }
+	if (aCPU->mUpperData)
+	{
+		return aCPU->mUpperData[aAddress - 0x80];
+	}
     }
     else
     {
-        aCPU->mLowerData[aCPU->mSFR[REG_SP]] = aValue;
+        return aCPU->mLowerData[aAddress];
     }
+
+    return BAD_VALUE;
+}
+
+static void write_mem(struct em8051 *aCPU, uint8_t aAddress, uint8_t value)
+{
+    if (aAddress > 0x7f)
+    {
+        aCPU->mSFR[aAddress - 0x80] = value;
+        if (aCPU->sfrwrite[aAddress - 0x80])
+            aCPU->sfrwrite[aAddress - 0x80](aCPU, aAddress);
+    }
+    else
+    {
+        aCPU->mLowerData[aAddress] = value;
+    }
+}
+
+static void write_mem_indir(struct em8051 *aCPU, uint8_t aAddress, uint8_t value)
+{
+    if (aAddress > 0x7f)
+    {
+	if (aCPU->mUpperData)
+	{
+		aCPU->mUpperData[aAddress - 0x80] = value;
+	}
+    }
+    else
+    {
+        aCPU->mLowerData[aAddress] = value;
+    }
+}
+
+void push_to_stack(struct em8051 *aCPU, uint8_t aValue)
+{
+    aCPU->mSFR[REG_SP]++;
+    write_mem(aCPU, aCPU->mSFR[REG_SP], aValue);
     if (aCPU->mSFR[REG_SP] == 0)
         if (aCPU->except)
             aCPU->except(aCPU, EXCEPTION_STACK);
@@ -88,23 +119,7 @@ void push_to_stack(struct em8051 *aCPU, uint8_t aValue)
 
 static uint8_t pop_from_stack(struct em8051 *aCPU)
 {
-    uint8_t value = BAD_VALUE;
-    if (aCPU->mSFR[REG_SP] > 0x7f)
-    {
-        if (aCPU->mUpperData)
-        {
-            value = UPRDATA(aCPU->mSFR[REG_SP]);
-        }
-        else
-        {
-            if (aCPU->except)
-                aCPU->except(aCPU, EXCEPTION_STACK);
-        }
-    }
-    else
-    {
-        value = aCPU->mLowerData[aCPU->mSFR[REG_SP]];
-    }
+    uint8_t value = read_mem(aCPU, aCPU->mSFR[REG_SP]);
     aCPU->mSFR[REG_SP]--;
 
     if (aCPU->mSFR[REG_SP] == 0xff)
@@ -176,16 +191,8 @@ static uint8_t inc_a(struct em8051 *aCPU)
 static uint8_t inc_mem(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    if (address > 0x7f)
-    {
-        aCPU->mSFR[address - 0x80]++;
-        if (aCPU->sfrwrite[address - 0x80])
-            aCPU->sfrwrite[address - 0x80](aCPU, address);
-    }
-    else
-    {
-        aCPU->mLowerData[address]++;
-    }
+    uint8_t value = read_mem(aCPU, address);
+    write_mem(aCPU, address, value + 1);
     PC += 2;
     return 0;
 }
@@ -193,17 +200,8 @@ static uint8_t inc_mem(struct em8051 *aCPU)
 static uint8_t inc_indir_rx(struct em8051 *aCPU)
 {    
     uint8_t address = INDIR_RX_ADDRESS;
-    if (address > 0x7f)
-    {
-        if (aCPU->mUpperData)
-        {
-            aCPU->mUpperData[address - 0x80]++;
-        }
-    }
-    else
-    {
-        aCPU->mLowerData[address]++;
-    }
+    uint8_t value = read_mem_indir(aCPU, address);
+    write_mem_indir(aCPU, address, value + 1);
     PC++;
     return 0;
 }
@@ -291,16 +289,8 @@ static uint8_t dec_a(struct em8051 *aCPU)
 static uint8_t dec_mem(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    if (address > 0x7f)
-    {
-        aCPU->mSFR[address - 0x80]--;
-        if (aCPU->sfrwrite[address - 0x80])
-            aCPU->sfrwrite[address - 0x80](aCPU, address);
-    }
-    else
-    {
-        aCPU->mLowerData[address]--;
-    }
+    uint8_t value = read_mem(aCPU, address);
+    write_mem(aCPU, address, value - 1);
     PC += 2;
     return 0;
 }
@@ -308,17 +298,8 @@ static uint8_t dec_mem(struct em8051 *aCPU)
 static uint8_t dec_indir_rx(struct em8051 *aCPU)
 {
     uint8_t address = INDIR_RX_ADDRESS;
-    if (address > 0x7f)
-    {
-        if (aCPU->mUpperData)
-        {
-            aCPU->mUpperData[address - 0x80]--;
-        }
-    }
-    else
-    {
-        aCPU->mLowerData[address]--;
-    }
+    uint8_t value = read_mem_indir(aCPU, address);
+    write_mem_indir(aCPU, address, value - 1);
     PC++;
     return 0;
 }
@@ -392,30 +373,16 @@ static uint8_t add_a_mem(struct em8051 *aCPU)
     uint8_t value = read_mem(aCPU, OPERAND1);
     add_solve_flags(aCPU, ACC, value, 0);
     ACC += value;
-	PC += 2;
+    PC += 2;
     return 0;
 }
 
 static uint8_t add_a_indir_rx(struct em8051 *aCPU)
 {
     uint8_t address = INDIR_RX_ADDRESS;
-    if (address > 0x7f)
-    {
-        uint8_t value = BAD_VALUE;
-        if (aCPU->mUpperData)
-        {
-            value = aCPU->mUpperData[address - 0x80];
-        }
-
-        add_solve_flags(aCPU, ACC, value, 0);
-        ACC += value;
-    }
-    else
-    {
-        add_solve_flags(aCPU, ACC, aCPU->mLowerData[address], 0);
-        ACC += aCPU->mLowerData[address];
-    }
-
+    uint8_t value = read_mem_indir(aCPU, address);
+    add_solve_flags(aCPU, ACC, value, 0);
+    ACC += value;
     PC++;
     return 0;
 }
@@ -523,22 +490,9 @@ static uint8_t addc_a_indir_rx(struct em8051 *aCPU)
 {
     bool carry = CARRY;
     uint8_t address = INDIR_RX_ADDRESS;
-    if (address > 0x7f)
-    {
-        uint8_t value = BAD_VALUE;
-        if (aCPU->mUpperData)
-        {
-            value = aCPU->mUpperData[address - 0x80];
-        }
-
-        add_solve_flags(aCPU, ACC, value, carry);
-        ACC += value + carry;
-    }
-    else
-    {
-        add_solve_flags(aCPU, ACC, aCPU->mLowerData[address], carry);
-        ACC += aCPU->mLowerData[address] + carry;
-    }
+    uint8_t value = read_mem_indir(aCPU, address);
+    add_solve_flags(aCPU, ACC, value, carry);
+    ACC += value + carry;
     PC++;
     return 0;
 }
@@ -560,16 +514,8 @@ static uint8_t jc_offset(struct em8051 *aCPU)
 static uint8_t orl_mem_a(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    if (address > 0x7f)
-    {
-        aCPU->mSFR[address - 0x80] |= ACC;
-        if (aCPU->sfrwrite[address - 0x80])
-            aCPU->sfrwrite[address - 0x80](aCPU, address);
-    }
-    else
-    {
-        aCPU->mLowerData[address] |= ACC;
-    }
+    uint8_t value = read_mem(aCPU, address);
+    write_mem(aCPU, address, value | ACC);
     PC += 2;
     return 0;
 }
@@ -577,17 +523,8 @@ static uint8_t orl_mem_a(struct em8051 *aCPU)
 static uint8_t orl_mem_imm(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    if (address > 0x7f)
-    {
-        aCPU->mSFR[address - 0x80] |= OPERAND2;
-        if (aCPU->sfrwrite[address - 0x80])
-            aCPU->sfrwrite[address - 0x80](aCPU, address);
-    }
-    else
-    {
-        aCPU->mLowerData[address] |= OPERAND2;
-    }
-    
+    uint8_t value = read_mem(aCPU, address);
+    write_mem(aCPU, address, value | OPERAND2);
     PC += 3;
     return 1;
 }
@@ -610,20 +547,8 @@ static uint8_t orl_a_mem(struct em8051 *aCPU)
 static uint8_t orl_a_indir_rx(struct em8051 *aCPU)
 {
     uint8_t address = INDIR_RX_ADDRESS;
-    if (address > 0x7f)
-    {
-        uint8_t value = BAD_VALUE;
-        if (aCPU->mUpperData)
-        {
-            value = aCPU->mUpperData[address - 0x80];
-        }
-
-        ACC |= value;
-    }
-    else
-    {
-        ACC |= aCPU->mLowerData[address];
-    }
+    uint8_t value = read_mem_indir(aCPU, address);
+    ACC |= value;
 
     PC++;
     return 0;
@@ -663,16 +588,8 @@ static uint8_t anl_mem_a(struct em8051 *aCPU)
 static uint8_t anl_mem_imm(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    if (address > 0x7f)
-    {
-        aCPU->mSFR[address - 0x80] &= OPERAND2;
-        if (aCPU->sfrwrite[address - 0x80])
-            aCPU->sfrwrite[address - 0x80](aCPU, address);
-    }
-    else
-    {
-        aCPU->mLowerData[address] &= OPERAND2;
-    }
+    uint8_t value = read_mem(aCPU, address);
+    write_mem(aCPU, address, value & OPERAND2);
     PC += 3;
     return 1;
 }
@@ -695,20 +612,8 @@ static uint8_t anl_a_mem(struct em8051 *aCPU)
 static uint8_t anl_a_indir_rx(struct em8051 *aCPU)
 {
     uint8_t address = INDIR_RX_ADDRESS;
-    if (address > 0x7f)
-    {
-        uint8_t value = BAD_VALUE;
-        if (aCPU->mUpperData)
-        {
-            value = aCPU->mUpperData[address - 0x80];
-        }
-
-        ACC &= value;
-    }
-    else
-    {
-        ACC &= aCPU->mLowerData[address];
-    }
+    uint8_t value = read_mem_indir(aCPU, address);
+    ACC &= value;
     PC++;
     return 0;
 }
@@ -747,16 +652,8 @@ static uint8_t xrl_mem_a(struct em8051 *aCPU)
 static uint8_t xrl_mem_imm(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    if (address > 0x7f)
-    {
-        aCPU->mSFR[address - 0x80] ^= OPERAND2;
-        if (aCPU->sfrwrite[address - 0x80])
-            aCPU->sfrwrite[address - 0x80](aCPU, address);
-    }
-    else
-    {
-        aCPU->mLowerData[address] ^= OPERAND2;
-    }
+    uint8_t value = read_mem(aCPU, address);
+    write_mem(aCPU, address, value ^ OPERAND2);
     PC += 3;
     return 1;
 }
@@ -779,21 +676,9 @@ static uint8_t xrl_a_mem(struct em8051 *aCPU)
 static uint8_t xrl_a_indir_rx(struct em8051 *aCPU)
 {
     uint8_t address = INDIR_RX_ADDRESS;
-    if (address > 0x7f)
-    {
-        uint8_t value = BAD_VALUE;
-        if (aCPU->mUpperData)
-        {
-            value = aCPU->mUpperData[address - 0x80];
-        }
-
-        ACC ^= value;
-    }
-    else
-    {
-        ACC ^= aCPU->mLowerData[address];
-    }
-    PC++;;
+    uint8_t value = read_mem_indir(aCPU, address);
+    ACC ^= value;
+    PC++;
     return 0;
 }
 
@@ -859,17 +744,7 @@ static uint8_t mov_a_imm(struct em8051 *aCPU)
 
 static uint8_t mov_mem_imm(struct em8051 *aCPU)
 {
-    uint8_t address = OPERAND1;
-    if (address > 0x7f)
-    {
-        aCPU->mSFR[address - 0x80] = OPERAND2;
-        if (aCPU->sfrwrite[address - 0x80])
-            aCPU->sfrwrite[address - 0x80](aCPU, address);
-    }
-    else
-    {
-        aCPU->mLowerData[address] = OPERAND2;
-    }
+    write_mem(aCPU, OPERAND1, OPERAND2);
 
     PC += 3;
     return 1;
@@ -879,17 +754,7 @@ static uint8_t mov_indir_rx_imm(struct em8051 *aCPU)
 {
     uint8_t address = INDIR_RX_ADDRESS;
     uint8_t value = OPERAND1;
-    if (address > 0x7f)
-    {
-        if (aCPU->mUpperData)
-        {
-            aCPU->mUpperData[address - 0x80] = value;
-        }
-    }
-    else
-    {
-        aCPU->mLowerData[address] = value;
-    }
+    write_mem_indir(aCPU, address, value);
 
     PC += 2;
     return 0;
@@ -967,65 +832,20 @@ static uint8_t div_ab(struct em8051 *aCPU)
 
 static uint8_t mov_mem_mem(struct em8051 *aCPU)
 {
-    uint8_t address1 = OPERAND2;
-    uint8_t value = read_mem(aCPU, OPERAND1);
-
-    if (address1 > 0x7f)
-    {
-        aCPU->mSFR[address1 - 0x80] = value;
-        if (aCPU->sfrwrite[address1 - 0x80])
-            aCPU->sfrwrite[address1 - 0x80](aCPU, address1);
-    }
-    else
-    {
-        aCPU->mLowerData[address1] = value;
-    }
-
+    uint8_t address_from = OPERAND1;
+    uint8_t address_to = OPERAND2;
+    uint8_t value = read_mem(aCPU, address_from);
+    write_mem(aCPU, address_to, value);
     PC += 3;
     return 1;
 }
 
 static uint8_t mov_mem_indir_rx(struct em8051 *aCPU)
 {
-    uint8_t address1 = OPERAND1;
-    uint8_t address2 = INDIR_RX_ADDRESS;
-    if (address1 > 0x7f)
-    {
-        if (address2 > 0x7f)
-        {
-            uint8_t value = BAD_VALUE;
-            if (aCPU->mUpperData)
-            {
-                value = aCPU->mUpperData[address2 - 0x80];
-            }
-            aCPU->mSFR[address1 - 0x80] = value;
-            if (aCPU->sfrwrite[address1 - 0x80])
-                aCPU->sfrwrite[address1 - 0x80](aCPU, address1);
-        }
-        else
-        {
-            aCPU->mSFR[address1 - 0x80] = aCPU->mLowerData[address2];
-            if (aCPU->sfrwrite[address1 - 0x80])
-                aCPU->sfrwrite[address1 - 0x80](aCPU, address1);
-        }
-    }
-    else
-    {
-        if (address2 > 0x7f)
-        {
-            uint8_t value = BAD_VALUE;
-            if (aCPU->mUpperData)
-            {
-                value = aCPU->mUpperData[address2 - 0x80];
-            }
-            aCPU->mLowerData[address1] = value;
-        }
-        else
-        {
-            aCPU->mLowerData[address1] = aCPU->mLowerData[address2];
-        }
-    }
-
+    uint8_t address_from = OPERAND1;
+    uint8_t address_to = INDIR_RX_ADDRESS;
+    uint8_t value = read_mem_indir(aCPU, address_from);
+    write_mem(aCPU, address_to, value);
     PC += 2;
     return 1;
 }
@@ -1098,22 +918,9 @@ static uint8_t subb_a_indir_rx(struct em8051 *aCPU)
 {
     bool carry = CARRY;
     uint8_t address = INDIR_RX_ADDRESS;
-    if (address > 0x7f)
-    {
-        uint8_t value = BAD_VALUE;
-        if (aCPU->mUpperData)
-        {
-            value = aCPU->mUpperData[address - 0x80];
-        }
-
-        sub_solve_flags(aCPU, ACC, value, carry);
-        ACC -= value + carry;
-    }
-    else
-    {
-        sub_solve_flags(aCPU, ACC, aCPU->mLowerData[address], carry);
-        ACC -= aCPU->mLowerData[address] + carry;
-    }
+    uint8_t value = read_mem_indir(aCPU, address);
+    sub_solve_flags(aCPU, ACC, value, carry);
+    ACC -= value + carry;
     PC++;
     return 0;
 }
@@ -1210,19 +1017,10 @@ static uint8_t mul_ab(struct em8051 *aCPU)
 
 static uint8_t mov_indir_rx_mem(struct em8051 *aCPU)
 {
-    uint8_t address1 = INDIR_RX_ADDRESS;
-    uint8_t value = read_mem(aCPU, OPERAND1);
-    if (address1 > 0x7f)
-    {
-        if (aCPU->mUpperData)
-        {
-            aCPU->mUpperData[address1 - 0x80] = value;
-        }
-    }
-    else
-    {
-        aCPU->mLowerData[address1] = value;
-    }
+    uint8_t address_to = INDIR_RX_ADDRESS;
+    uint8_t address_from = OPERAND1;
+    uint8_t value = read_mem(aCPU, address_from);
+    write_mem_indir(aCPU, address_to, value);
     PC += 2;
     return 1;
 }
@@ -1323,18 +1121,7 @@ static uint8_t cjne_a_imm_offset(struct em8051 *aCPU)
 static uint8_t cjne_a_mem_offset(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    uint8_t value;
-    if (address > 0x7f)
-    {
-        if (aCPU->sfrread[address - 0x80])
-            value = aCPU->sfrread[address - 0x80](aCPU, address);
-        else
-            value = aCPU->mSFR[address - 0x80];
-    }
-    else
-    {
-        value = aCPU->mLowerData[address];
-    }  
+    uint8_t value = read_mem(aCPU, address);
 
     if (ACC < value)
     {
@@ -1358,19 +1145,8 @@ static uint8_t cjne_a_mem_offset(struct em8051 *aCPU)
 static uint8_t cjne_indir_rx_imm_offset(struct em8051 *aCPU)
 {
     uint8_t address = INDIR_RX_ADDRESS;
-    uint8_t value1 = BAD_VALUE;
+    uint8_t value1 = read_mem_indir(aCPU, address);
     uint8_t value2 = OPERAND1;
-    if (address > 0x7f)
-    {
-        if (aCPU->mUpperData)
-        {
-            value1 = aCPU->mUpperData[address - 0x80];
-        }
-    }
-    else
-    {
-        value1 = aCPU->mLowerData[address];
-    }  
 
     if (value1 < value2)
     {
@@ -1445,19 +1221,9 @@ static uint8_t swap_a(struct em8051 *aCPU)
 static uint8_t xch_a_mem(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    uint8_t value = read_mem(aCPU, OPERAND1);
-    if (address > 0x7f)
-    {
-        aCPU->mSFR[address - 0x80] = ACC;
-        ACC = value;
-        if (aCPU->sfrwrite[address - 0x80])
-            aCPU->sfrwrite[address - 0x80](aCPU, address);
-    }
-    else
-    {
-        aCPU->mLowerData[address] = ACC;
-        ACC = value;
-    }
+    uint8_t value = read_mem(aCPU, address);
+    write_mem(aCPU, address, ACC);
+    ACC = value;
     PC += 2;
     return 0;
 }
@@ -1465,22 +1231,9 @@ static uint8_t xch_a_mem(struct em8051 *aCPU)
 static uint8_t xch_a_indir_rx(struct em8051 *aCPU)
 {
     uint8_t address = INDIR_RX_ADDRESS;
-    if (address > 0x7f)
-    {
-        uint8_t value;
-        if (aCPU->mUpperData)
-        {
-            value = aCPU->mUpperData[address - 0x80];
-            aCPU->mUpperData[address - 0x80] = ACC;
-            ACC = value;
-        }
-    }
-    else
-    {
-        uint8_t value = aCPU->mLowerData[address];
-        aCPU->mLowerData[address] = ACC;
-        ACC = value;
-    }
+    uint8_t value = read_mem_indir(aCPU, address);
+    write_mem_indir(aCPU, address, ACC);
+    ACC = value;
     PC++;
     return 0;
 }
@@ -1489,17 +1242,8 @@ static uint8_t xch_a_indir_rx(struct em8051 *aCPU)
 static uint8_t pop_mem(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    if (address > 0x7f)
-    {
-        aCPU->mSFR[address - 0x80] = pop_from_stack(aCPU);
-        if (aCPU->sfrwrite[address - 0x80])
-            aCPU->sfrwrite[address - 0x80](aCPU, address);
-    }
-    else
-    {
-        aCPU->mLowerData[address] = pop_from_stack(aCPU);
-    }
-
+    uint8_t value = pop_from_stack(aCPU);
+    write_mem(aCPU, address, value);
     PC += 2;
     return 1;
 }
@@ -1572,19 +1316,10 @@ static uint8_t da_a(struct em8051 *aCPU)
 static uint8_t djnz_mem_offset(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    uint8_t value;
-    if (address > 0x7f)
-    {
-        aCPU->mSFR[address - 0x80]--;
-        value = aCPU->mSFR[address - 0x80];
-        if (aCPU->sfrwrite[address - 0x80])
-            aCPU->sfrwrite[address - 0x80](aCPU, address);
-    }
-    else
-    {
-        aCPU->mLowerData[address]--;
-        value = aCPU->mLowerData[address];
-    }
+    uint8_t value = read_mem(aCPU, address);
+    value --;
+    write_mem(aCPU, address, value);
+
     if (value)
     {
         PC += (signed char)OPERAND2 + 3;
@@ -1599,26 +1334,13 @@ static uint8_t djnz_mem_offset(struct em8051 *aCPU)
 static uint8_t xchd_a_indir_rx(struct em8051 *aCPU)
 {
     uint8_t address = INDIR_RX_ADDRESS;
-    if (address > 0x7f)
-    {
-        uint8_t value;
-        if (aCPU->mUpperData)
-        {
-            value = aCPU->mUpperData[address - 0x80];
-            aCPU->mUpperData[address - 0x80] = (aCPU->mUpperData[address - 0x80] & 0xf0) | (ACC & 0x0f);
-            ACC = (ACC & 0xf0) | (value & 0x0f);
-        }
-    }
-    else
-    {
-        uint8_t value = aCPU->mLowerData[address];
-        aCPU->mLowerData[address] = (aCPU->mLowerData[address] & 0x0f) | (ACC & 0x0f);
-        ACC = (ACC & 0xf0) | (value & 0x0f);
-    }
+    uint8_t value = read_mem_indir(aCPU, address);
+    ACC = (ACC & 0xf0) | (value & 0x0f);
+    value = (value & 0xf0) | (ACC & 0x0f);
+    write_mem_indir(aCPU, address, value);
     PC++;
     return 0;
 }
-
 
 static uint8_t movx_a_indir_dptr(struct em8051 *aCPU)
 {
@@ -1677,21 +1399,7 @@ static uint8_t mov_a_mem(struct em8051 *aCPU)
 static uint8_t mov_a_indir_rx(struct em8051 *aCPU)
 {
     uint8_t address = INDIR_RX_ADDRESS;
-    if (address > 0x7f)
-    {
-        uint8_t value = BAD_VALUE;
-        if (aCPU->mUpperData)
-        {
-            value = aCPU->mUpperData[address - 0x80];
-        }
-
-        ACC = value;
-    }
-    else
-    {
-        ACC = aCPU->mLowerData[address];
-    }
-
+    ACC = read_mem_indir(aCPU, address);
     PC++;
     return 0;
 }
@@ -1742,16 +1450,7 @@ static uint8_t cpl_a(struct em8051 *aCPU)
 static uint8_t mov_mem_a(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    if (address > 0x7f)
-    {
-        aCPU->mSFR[address - 0x80] = ACC;
-        if (aCPU->sfrwrite[address - 0x80])
-            aCPU->sfrwrite[address - 0x80](aCPU, address);
-    }
-    else
-    {
-        aCPU->mLowerData[address] = ACC;
-    }
+    write_mem(aCPU, address, ACC);
     PC += 2;
     return 0;
 }
@@ -1759,16 +1458,7 @@ static uint8_t mov_mem_a(struct em8051 *aCPU)
 static uint8_t mov_indir_rx_a(struct em8051 *aCPU)
 {
     uint8_t address = INDIR_RX_ADDRESS;
-    if (address > 0x7f)
-    {
-        if (aCPU->mUpperData)
-            aCPU->mUpperData[address - 0x80] = ACC;
-    }
-    else
-    {
-        aCPU->mLowerData[address] = ACC;
-    }
-
+    write_mem_indir(aCPU, address, ACC);
     PC++;
     return 0;
 }
@@ -1854,16 +1544,7 @@ static uint8_t mov_mem_rx(struct em8051 *aCPU)
 {
     uint8_t rx = RX_ADDRESS;
     uint8_t address = OPERAND1;
-    if (address > 0x7f)
-    {
-        aCPU->mSFR[address - 0x80] = aCPU->mLowerData[rx];
-        if (aCPU->sfrwrite[address - 0x80])
-            aCPU->sfrwrite[address - 0x80](aCPU, address);
-    }
-    else
-    {
-        aCPU->mLowerData[address] = aCPU->mLowerData[rx];
-    }
+    write_mem(aCPU, address, aCPU->mLowerData[rx]);
     PC += 2;
     return 1;
 }
