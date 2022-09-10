@@ -34,6 +34,7 @@
 #define BAD_VALUE 0x77
 #define PSW aCPU->mSFR[REG_PSW]
 #define ACC aCPU->mSFR[REG_ACC]
+#define DPTR ((aCPU->mSFR[REG_DPH] << 8) | (aCPU->mSFR[REG_DPL]))
 #define PC aCPU->mPC
 #define CODEMEM(x) aCPU->mCodeMem[(x)&(aCPU->mCodeMemMaxIdx)]
 #define EXTDATA(x) aCPU->mExtData[(x)&(aCPU->mExtDataMaxIdx)]
@@ -844,7 +845,7 @@ static uint8_t orl_c_bitaddr(struct em8051 *aCPU)
 
 static uint8_t jmp_indir_a_dptr(struct em8051 *aCPU)
 {
-    PC = ((aCPU->mSFR[REG_DPH] << 8) | (aCPU->mSFR[REG_DPL])) + ACC;
+    PC = DPTR + ACC;
     return 1;
 }
 
@@ -1067,7 +1068,7 @@ static uint8_t mov_bitaddr_c(struct em8051 *aCPU)
 
 static uint8_t movc_a_indir_a_dptr(struct em8051 *aCPU)
 {
-    uint16_t address = (aCPU->mSFR[REG_DPH] << 8) | ((aCPU->mSFR[REG_DPL] << 0) + ACC);
+    uint16_t address = DPTR + ACC;
     ACC = CODEMEM(address);
     PC++;
     return 1;
@@ -1620,7 +1621,7 @@ static uint8_t xchd_a_indir_rx(struct em8051 *aCPU)
 
 static uint8_t movx_a_indir_dptr(struct em8051 *aCPU)
 {
-    uint16_t dptr = (aCPU->mSFR[REG_DPH] << 8) | aCPU->mSFR[REG_DPL];
+    uint16_t dptr = DPTR;
     if (aCPU->xread)
     {
         ACC = aCPU->xread(aCPU, dptr);
@@ -1697,7 +1698,7 @@ static uint8_t mov_a_indir_rx(struct em8051 *aCPU)
 
 static uint8_t movx_indir_dptr_a(struct em8051 *aCPU)
 {
-    uint16_t dptr = (aCPU->mSFR[REG_DPH] << 8) | aCPU->mSFR[REG_DPL];
+    uint16_t dptr = DPTR;
     if (aCPU->xwrite)
     {
         aCPU->xwrite(aCPU, dptr, ACC);
