@@ -42,8 +42,9 @@
 #define OPCODE CODEMEM(PC + 0)
 #define OPERAND1 CODEMEM(PC + 1)
 #define OPERAND2 CODEMEM(PC + 2)
-#define INDIR_RX_ADDRESS (aCPU->mLowerData[(OPCODE & 1) + 8 * ((PSW & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0)])
-#define RX_ADDRESS ((OPCODE & 7) + 8 * ((PSW & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0))
+#define PSW_BANK ((PSW & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0)
+#define INDIR_RX_ADDRESS (aCPU->mLowerData[(OPCODE & 1) + 8 * PSW_BANK])
+#define RX_ADDRESS ((OPCODE & 7) + 8 * PSW_BANK)
 #define CARRY ((PSW & PSWMASK_C) >> PSW_C)
 
 static uint8_t read_mem(struct em8051 *aCPU, uint8_t aAddress)
