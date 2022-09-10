@@ -79,6 +79,23 @@ static uint8_t read_mem_indir(struct em8051 *aCPU, uint8_t aAddress)
     return BAD_VALUE;
 }
 
+static bool read_bit_addr(struct em8051 *aCPU, uint8_t aAddress)
+{
+    uint8_t address;
+    uint8_t bitaddr = aAddress & 0x07;
+    uint8_t bitmask = (1 << bitaddr);
+    if (aAddress > 0x7f)
+    {
+        address = aAddress & 0xf8;
+    }
+    else
+    {
+        address = 0x20 + (aAddress >> 3);
+    }
+    uint8_t value = read_mem(aCPU, address);
+    return value & bitmask;
+}
+
 static void write_mem(struct em8051 *aCPU, uint8_t aAddress, uint8_t value)
 {
     if (aAddress > 0x7f)
@@ -106,6 +123,24 @@ static void write_mem_indir(struct em8051 *aCPU, uint8_t aAddress, uint8_t value
     {
         aCPU->mLowerData[aAddress] = value;
     }
+}
+
+static void write_bit_addr(struct em8051 *aCPU, uint8_t aAddress, bool bit)
+{
+    uint8_t address;
+    uint8_t bitaddr = aAddress & 0x07;
+    uint8_t bitmask = (1 << bitaddr);
+    if (aAddress > 0x7f)
+    {
+        address = aAddress & 0xf8;
+    }
+    else
+    {
+        address = 0x20 + (aAddress >> 3);
+    }
+    uint8_t value = read_mem(aCPU, address);
+    value = (value & (~bitmask)) | (bit * bitmask);
+    write_mem(aCPU, address, value);
 }
 
 void push_to_stack(struct em8051 *aCPU, uint8_t aValue)
