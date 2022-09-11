@@ -47,6 +47,8 @@
 #define RX_ADDRESS ((OPCODE & 7) + 8 * PSW_BANK)
 #define CARRY ((PSW & PSWMASK_C) >> PSW_C)
 
+/* Helpers */
+
 static uint8_t read_mem(struct em8051 *aCPU, uint8_t aAddress)
 {
     if (aAddress > 0x7f)
@@ -153,6 +155,7 @@ static void sub_solve_flags(struct em8051 * aCPU, uint8_t value1, uint8_t value2
                           (carry << PSW_C) | (auxcarry << PSW_AC) | (overflow << PSW_OV);
 }
 
+/* Operations */
 
 static uint8_t ajmp_offset(struct em8051 *aCPU)
 {
@@ -1635,6 +1638,8 @@ static uint8_t mov_rx_a(struct em8051 *aCPU)
     PC++;
     return 0;
 }
+
+/* handling opcode decode */
 
 void op_setptrs(struct em8051 *aCPU)
 {

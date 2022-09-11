@@ -34,6 +34,9 @@
 #include "emu8051.h"
 #include "emulator.h"
 
+#define PSW aCPU->mSFR[REG_PSW]
+#define PSW_BANK ((PSW & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0)
+
 /*
     The history-based display assumes that there's no
     self-modifying code. To get self-modifying code
@@ -203,27 +206,27 @@ void build_main_view(struct em8051 *aCPU)
 
 int getregoutput(struct em8051 *aCPU, int pos)
 {
-    int rx = 8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int rx_addr = 8 * PSW_BANK;
     switch (pos)
     {
     case 0:
         return aCPU->mSFR[REG_ACC];
     case 1:
-        return aCPU->mLowerData[rx + 0];
+        return aCPU->mLowerData[rx_addr + 0];
     case 2:
-        return aCPU->mLowerData[rx + 1];
+        return aCPU->mLowerData[rx_addr + 1];
     case 3:
-        return aCPU->mLowerData[rx + 2];
+        return aCPU->mLowerData[rx_addr + 2];
     case 4:
-        return aCPU->mLowerData[rx + 3];
+        return aCPU->mLowerData[rx_addr + 3];
     case 5:
-        return aCPU->mLowerData[rx + 4];
+        return aCPU->mLowerData[rx_addr + 4];
     case 6:
-        return aCPU->mLowerData[rx + 5];
+        return aCPU->mLowerData[rx_addr + 5];
     case 7:
-        return aCPU->mLowerData[rx + 6];
+        return aCPU->mLowerData[rx_addr + 6];
     case 8:
-        return aCPU->mLowerData[rx + 7];
+        return aCPU->mLowerData[rx_addr + 7];
     case 9:
         return aCPU->mSFR[REG_B];
     case 10:
@@ -234,35 +237,35 @@ int getregoutput(struct em8051 *aCPU, int pos)
 
 void setregoutput(struct em8051 *aCPU, int pos, int val)
 {
-    int rx = 8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int rx_addr = 8 * PSW_BANK;
     switch (pos)
     {
     case 0:
         aCPU->mSFR[REG_ACC] = val;
         break;
     case 1:
-        aCPU->mLowerData[rx + 0] = val;
+        aCPU->mLowerData[rx_addr + 0] = val;
         break;
     case 2:
-        aCPU->mLowerData[rx + 1] = val;
+        aCPU->mLowerData[rx_addr + 1] = val;
         break;
     case 3:
-        aCPU->mLowerData[rx + 2] = val;
+        aCPU->mLowerData[rx_addr + 2] = val;
         break;
     case 4:
-        aCPU->mLowerData[rx + 3] = val;
+        aCPU->mLowerData[rx_addr + 3] = val;
         break;
     case 5:
-        aCPU->mLowerData[rx + 4] = val;
+        aCPU->mLowerData[rx_addr + 4] = val;
         break;
     case 6:
-        aCPU->mLowerData[rx + 5] = val;
+        aCPU->mLowerData[rx_addr + 5] = val;
         break;
     case 7:
-        aCPU->mLowerData[rx + 6] = val;
+        aCPU->mLowerData[rx_addr + 6] = val;
         break;
     case 8:
-        aCPU->mLowerData[rx + 7] = val;
+        aCPU->mLowerData[rx_addr + 7] = val;
         break;
     case 9:
         aCPU->mSFR[REG_B] = val;
@@ -463,18 +466,18 @@ void mainview_editor_keys(struct em8051 *aCPU, int ch)
 
 void refresh_regoutput(struct em8051 *aCPU, int cursor)
 {
-    int rx = 8 * ((aCPU->mSFR[REG_PSW] & (PSWMASK_RS0|PSWMASK_RS1))>>PSW_RS0);
+    int rx_addr = 8 * PSW_BANK;
     
     mvwprintw(regoutput, LINES-19, 0, "%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %04X",
         aCPU->mSFR[REG_ACC],
-        aCPU->mLowerData[0 + rx],
-        aCPU->mLowerData[1 + rx],
-        aCPU->mLowerData[2 + rx],
-        aCPU->mLowerData[3 + rx],
-        aCPU->mLowerData[4 + rx],
-        aCPU->mLowerData[5 + rx],
-        aCPU->mLowerData[6 + rx],
-        aCPU->mLowerData[7 + rx],
+        aCPU->mLowerData[rx_addr + 0],
+        aCPU->mLowerData[rx_addr + 1],
+        aCPU->mLowerData[rx_addr + 2],
+        aCPU->mLowerData[rx_addr + 3],
+        aCPU->mLowerData[rx_addr + 4],
+        aCPU->mLowerData[rx_addr + 5],
+        aCPU->mLowerData[rx_addr + 6],
+        aCPU->mLowerData[rx_addr + 7],
         aCPU->mSFR[REG_B],
         (aCPU->mSFR[REG_DPH]<<8)|aCPU->mSFR[REG_DPL]);
 
