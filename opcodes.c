@@ -62,6 +62,19 @@ static uint8_t read_mem(struct em8051 *aCPU, uint8_t aAddress)
     }
 }
 
+/* Do not trigger sfrread callback */
+static uint8_t read_mem_intern(struct em8051 *aCPU, uint8_t aAddress)
+{
+    if (aAddress > 0x7f)
+    {
+        return aCPU->mSFR[aAddress - 0x80];
+    }
+    else
+    {
+        return aCPU->mLowerData[aAddress];
+    }
+}
+
 static uint8_t read_mem_indir(struct em8051 *aCPU, uint8_t aAddress)
 {
     if (aAddress > 0x7f)
@@ -138,7 +151,7 @@ static void write_bit_addr(struct em8051 *aCPU, uint8_t aAddress, bool bit)
     {
         address = 0x20 + (aAddress >> 3);
     }
-    uint8_t value = read_mem(aCPU, address);
+    uint8_t value = read_mem_intern(aCPU, address);
     value = value & (~bitmask);
     if (bit) {
          value |= bitmask;
