@@ -806,7 +806,10 @@ static uint8_t anl_c_bitaddr(struct em8051 *aCPU)
     bool carry = CARRY;
     bool bit = read_bit_addr(aCPU, address);
 
-    PSW = (PSW & ~PSWMASK_C) | (PSWMASK_C * (carry & bit));
+    PSW = (PSW & ~PSWMASK_C);
+    if (carry && bit) {
+        PSW |= PSWMASK_C;
+    }
 
     PC += 2;
     return 1;
