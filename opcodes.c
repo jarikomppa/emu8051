@@ -415,41 +415,14 @@ static uint8_t add_a_indir_rx(struct em8051 *aCPU)
 static uint8_t jnb_bitaddr_offset(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    if (address > 0x7f)
-    {
-        uint8_t bitaddr = address & 7;
-        uint8_t bitmask = (1 << bitaddr);
-        uint8_t value;
-        address &= 0xf8;        
-        if (aCPU->sfrread[address - 0x80])
-            value = aCPU->sfrread[address - 0x80](aCPU, address);
-        else
-            value = aCPU->mSFR[address - 0x80];
-        
-        if (!(value & bitmask))
-        {
-            PC += (int8_t) OPERAND2 + 3;
-        }
-        else
-        {
-            PC += 3;
-        }
+
+    PC += 3;
+
+    bool bit = read_bit_addr(aCPU, address);
+    if (! bit) {
+	PC += (int8_t) OPERAND2; // use the OPERAND2 as a signed char
     }
-    else
-    {
-        uint8_t bitaddr = address & 7;
-        uint8_t bitmask = (1 << bitaddr);
-        address >>= 3;
-        address += 0x20;
-        if (!(aCPU->mLowerData[address] & bitmask))
-        {
-            PC += (int8_t) OPERAND2 + 3;
-        }
-        else
-        {
-            PC += 3;
-        }
-    }
+
     return 1;
 }
 
