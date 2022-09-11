@@ -477,7 +477,11 @@ bool tick(struct em8051 *aCPU)
         if (is_idle) {
             aCPU->mTickDelay = 1;
         } else {
+#ifdef USE_SWITCH_DISPATCH
+            aCPU->mTickDelay = do_op(aCPU);
+#else // USE_SWITCH_DISPATCH
             aCPU->mTickDelay = aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemMaxIdx)]](aCPU);
+#endif // USE_SWITCH_DISPATCH
         }
         ticked = true;
         // update parity bit
@@ -505,7 +509,11 @@ uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer)
         strcpy(aBuffer, "POWER DOWN");
         return 0;
     }
+#ifdef USE_SWITCH_DISPATCH
+    return do_dec(aCPU, aPosition, aBuffer);
+#else // USE_SWITCH_DISPATCH
     return aCPU->dec[aCPU->mCodeMem[aPosition & (aCPU->mCodeMemMaxIdx)]](aCPU, aPosition, aBuffer);
+#endif // USE_SWITCH_DISPATCH
 }
 
 void reset(struct em8051 *aCPU, int aWipe)

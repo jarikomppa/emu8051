@@ -106,6 +106,7 @@ bool tick(struct em8051 *aCPU);
 // buffer must be big enough (64 bytes is very safe). 
 // Returns length of opcode.
 uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer);
+uint8_t do_dec(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer);
 
 // Load an intel hex format object file. Returns negative for errors.
 int load_obj(struct em8051 *aCPU, char *aFilename);

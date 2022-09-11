@@ -272,8 +272,11 @@ void change_view(struct em8051 *aCPU, int changeto)
     }
 }
 
+#if USE_SWITCH_DISPATCH
+#else // USE_SWITCH_DISPATCH
 void disasm_setptrs(struct em8051 *aCPU);
 void op_setptrs(struct em8051 *aCPU);
+#endif // USE_SWITCH_DISPATCH
 
 int main(int parc, char ** pars)
 {
@@ -299,8 +302,11 @@ int main(int parc, char ** pars)
     emu.sfrread[REG_P2] = emu_sfrread;
     emu.sfrread[REG_P3] = emu_sfrread;
 
+#ifdef USE_SWITCH_DISPATCH
+#else // USE_SWITCH_DISPATCH
     disasm_setptrs(&emu);
     op_setptrs(&emu);
+#endif // USE_SWITCH_DISPATCH
 
     reset(&emu, RESET_RAM | RESET_SFR | RESET_ROM);
 
