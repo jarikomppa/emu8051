@@ -263,42 +263,15 @@ static uint8_t jbc_bitaddr_offset(struct em8051 *aCPU)
     // as the original data will be read from the output data latch, not the input pin
     // -- MCS(r) 51 Microcontroller Family User's Manual
     uint8_t address = OPERAND1;
-    if (address > 0x7f)
-    {
-        uint8_t bitaddr = address & 7;
-        uint8_t bitmask = (1 << bitaddr);
-        uint8_t value;
-        address &= 0xf8;        
-        value = aCPU->mSFR[address - 0x80];
-        
-        if (value & bitmask)
-        {
-            aCPU->mSFR[address - 0x80] &= ~bitmask;
-            PC += (int8_t) OPERAND2 + 3;
-            if (aCPU->sfrwrite[address - 0x80])
-                aCPU->sfrwrite[address - 0x80](aCPU, address);
-        }
-        else
-        {
-            PC += 3;
-        }
+
+    PC += 3;
+
+    bool bit = read_bit_addr(aCPU, address);
+    if (bit) {
+        PC += (int8_t) OPERAND2; // use the OPERAND2 as a signed char
+        write_bit_addr(aCPU, address, false); // Clear the bit
     }
-    else
-    {
-        uint8_t bitaddr = address & 7;
-        uint8_t bitmask = (1 << bitaddr);
-        address >>= 3;
-        address += 0x20;
-        if (aCPU->mLowerData[address] & bitmask)
-        {
-            aCPU->mLowerData[address] &= ~bitmask;
-            PC += (int8_t) OPERAND2 + 3;
-        }
-        else
-        {
-            PC += 3;
-        }
-    }
+
     return 1;
 }
 
