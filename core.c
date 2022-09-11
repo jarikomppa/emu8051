@@ -28,7 +28,6 @@
 
 #define T0_MODE3_MASK (TMODMASK_M0_0 | TMODMASK_M1_0)
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "emu8051.h"
@@ -498,12 +497,12 @@ uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer)
 {
     bool is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
     if (is_idle) {
-        sprintf(aBuffer, "IDLE");
+        strcpy(aBuffer, "IDLE");
         return 0;
     }
     bool is_powerdown = (aCPU->mSFR[REG_PCON]) & 0x02;
     if (is_powerdown) {
-        sprintf(aBuffer, "POWER DOWN");
+        strcpy(aBuffer, "POWER DOWN");
         return 0;
     }
     return aCPU->dec[aCPU->mCodeMem[aPosition & (aCPU->mCodeMemMaxIdx)]](aCPU, aPosition, aBuffer);
@@ -555,60 +554,4 @@ void reset(struct em8051 *aCPU, bool aWipe)
     // Clean Serial
     aCPU->serial_interrupt_trigger = 0;
     aCPU->serial_out_remaining_bits = 0;
-}
-
-
-int readbyte(FILE * f)
-{
-    char data[3];
-    data[0] = fgetc(f);
-    data[1] = fgetc(f);
-    data[2] = 0;
-    return strtol(data, NULL, 16);
-}
-
-int load_obj(struct em8051 *aCPU, char *aFilename)
-{
-    FILE *f;    
-    if (aFilename == 0 || aFilename[0] == 0)
-        return -1;
-    f = fopen(aFilename, "r");
-    if (!f) return -1;
-    if (fgetc(f) != ':')
-    {
-    	  fclose(f);
-        return -2; // unsupported file format
-    }
-    while (!feof(f))
-    {
-        int recordlength;
-        int address;
-        int recordtype;
-        int checksum;
-        int i;
-        recordlength = readbyte(f);
-        address = readbyte(f);
-        address <<= 8;
-        address |= readbyte(f);
-        recordtype = readbyte(f);
-        if (recordtype == 1)
-            return 0; // we're done
-        if (recordtype != 0)
-            return -3; // unsupported record type
-        checksum = recordtype + recordlength + (address & 0xff) + (address >> 8); // final checksum = 1 + not(checksum)
-        for (i = 0; i < recordlength; i++)
-        {
-            int data = readbyte(f);
-            checksum += data;
-            aCPU->mCodeMem[address + i] = data;
-        }
-        i = readbyte(f);
-        checksum &= 0xff;
-        checksum = 256 - checksum;
-        if (i != (checksum & 0xff))
-            return -4; // checksum failure
-        while (fgetc(f) != ':' && !feof(f)) {} // skip newline        
-    }
-	  fclose(f);
-    return -5;
 }
