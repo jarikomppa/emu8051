@@ -1161,26 +1161,7 @@ static uint8_t push_mem(struct em8051 *aCPU)
 static uint8_t clr_bitaddr(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    if (address > 0x7f)
-    {
-        // Note: when this instruction is used to test an output pin, the value used
-        // as the original data will be read from the output data latch, not the input pin
-        // -- MCS(r) 51 Microcontroller Family User's Manual
-        uint8_t bitaddr = address & 7;
-        uint8_t bitmask = (1 << bitaddr);
-        address &= 0xf8;        
-        aCPU->mSFR[address - 0x80] &= ~bitmask;
-        if (aCPU->sfrwrite[address - 0x80])
-            aCPU->sfrwrite[address - 0x80](aCPU, address);
-    }
-    else
-    {
-        uint8_t bitaddr = address & 7;
-        uint8_t bitmask = (1 << bitaddr);
-        address >>= 3;
-        address += 0x20;
-        aCPU->mLowerData[address] &= ~bitmask;
-    }
+    write_bit_addr(aCPU, address, false);
     PC += 2;
     return 0;
 }
