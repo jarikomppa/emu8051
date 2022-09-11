@@ -955,7 +955,11 @@ static uint8_t mov_c_bitaddr(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
     bool bit = read_bit_addr(aCPU, address);
-    PSW = (PSW & ~PSWMASK_C) | (PSWMASK_C * bit);
+    PSW = (PSW & ~PSWMASK_C);
+    if (bit)
+    {
+        PSW |= PSWMASK_C;
+    }
     PC += 2;
     return 0;
 }
