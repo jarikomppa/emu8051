@@ -956,7 +956,7 @@ static uint8_t orl_c_compl_bitaddr(struct em8051 *aCPU)
         PSW = (PSW & ~PSWMASK_C) | (PSWMASK_C * value);
     }
     PC += 2;
-    return 0;
+    return 1;
 }
 
 static uint8_t mov_c_bitaddr(struct em8051 *aCPU)
