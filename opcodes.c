@@ -139,7 +139,10 @@ static void write_bit_addr(struct em8051 *aCPU, uint8_t aAddress, bool bit)
         address = 0x20 + (aAddress >> 3);
     }
     uint8_t value = read_mem(aCPU, address);
-    value = (value & (~bitmask)) | (bit * bitmask);
+    value = value & (~bitmask);
+    if (bit) {
+         value |= bitmask;
+    }
     write_mem(aCPU, address, value);
 }
 
