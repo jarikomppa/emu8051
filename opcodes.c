@@ -223,7 +223,7 @@ static uint8_t jbc_bitaddr_offset(struct em8051 *aCPU)
         if (value & bitmask)
         {
             aCPU->mSFR[address - 0x80] &= ~bitmask;
-            PC += (signed char)OPERAND2 + 3;
+            PC += (int8_t) OPERAND2 + 3;
             if (aCPU->sfrwrite[address - 0x80])
                 aCPU->sfrwrite[address - 0x80](aCPU, address);
         }
@@ -241,7 +241,7 @@ static uint8_t jbc_bitaddr_offset(struct em8051 *aCPU)
         if (aCPU->mLowerData[address] & bitmask)
         {
             aCPU->mLowerData[address] &= ~bitmask;
-            PC += (signed char)OPERAND2 + 3;
+            PC += (int8_t) OPERAND2 + 3;
         }
         else
         {
@@ -321,7 +321,7 @@ static uint8_t jb_bitaddr_offset(struct em8051 *aCPU)
         
         if (value & bitmask)
         {
-            PC += (signed char)OPERAND2 + 3;
+            PC += (int8_t) OPERAND2 + 3;
         }
         else
         {
@@ -336,7 +336,7 @@ static uint8_t jb_bitaddr_offset(struct em8051 *aCPU)
         address += 0x20;
         if (aCPU->mLowerData[address] & bitmask)
         {
-            PC += (signed char)OPERAND2 + 3;
+            PC += (int8_t) OPERAND2 + 3;
         }
         else
         {
@@ -403,7 +403,7 @@ static uint8_t jnb_bitaddr_offset(struct em8051 *aCPU)
         
         if (!(value & bitmask))
         {
-            PC += (signed char)OPERAND2 + 3;
+            PC += (int8_t) OPERAND2 + 3;
         }
         else
         {
@@ -418,7 +418,7 @@ static uint8_t jnb_bitaddr_offset(struct em8051 *aCPU)
         address += 0x20;
         if (!(aCPU->mLowerData[address] & bitmask))
         {
-            PC += (signed char)OPERAND2 + 3;
+            PC += (int8_t) OPERAND2 + 3;
         }
         else
         {
@@ -502,7 +502,7 @@ static uint8_t jc_offset(struct em8051 *aCPU)
 {
     if (PSW & PSWMASK_C)
     {
-        PC += (signed char)OPERAND1 + 2;
+        PC += (int8_t) OPERAND1 + 2;
     }
     else
     {
@@ -563,7 +563,7 @@ static uint8_t jnc_offset(struct em8051 *aCPU)
     }
     else
     {
-        PC += (signed char)OPERAND1 + 2;
+        PC += (int8_t) OPERAND1 + 2;
     }
     return 1;
 }
@@ -623,7 +623,7 @@ static uint8_t jz_offset(struct em8051 *aCPU)
 {
     if (!ACC)
     {
-        PC += (signed char)OPERAND1 + 2;
+        PC += (int8_t) OPERAND1 + 2;
     }
     else
     {
@@ -687,7 +687,7 @@ static uint8_t jnz_offset(struct em8051 *aCPU)
 {
     if (ACC)
     {
-        PC += (signed char)OPERAND1 + 2;
+        PC += (int8_t) OPERAND1 + 2;
     }
     else
     {
@@ -763,7 +763,7 @@ static uint8_t mov_indir_rx_imm(struct em8051 *aCPU)
 
 static uint8_t sjmp_offset(struct em8051 *aCPU)
 {
-    PC += (signed char)(OPERAND1) + 2;
+    PC += (int8_t) (OPERAND1) + 2;
     return 1;
 }
 
@@ -1109,7 +1109,7 @@ static uint8_t cjne_a_imm_offset(struct em8051 *aCPU)
 
     if (ACC != value)
     {
-        PC += (signed char)OPERAND2 + 3;
+        PC += (int8_t) OPERAND2 + 3;
     }
     else
     {
@@ -1134,7 +1134,7 @@ static uint8_t cjne_a_mem_offset(struct em8051 *aCPU)
 
     if (ACC != value)
     {
-        PC += (signed char)OPERAND2 + 3;
+        PC += (int8_t) OPERAND2 + 3;
     }
     else
     {
@@ -1159,7 +1159,7 @@ static uint8_t cjne_indir_rx_imm_offset(struct em8051 *aCPU)
 
     if (value1 != value2)
     {
-        PC += (signed char)OPERAND2 + 3;
+        PC += (int8_t) OPERAND2 + 3;
     }
     else
     {
@@ -1322,7 +1322,7 @@ static uint8_t djnz_mem_offset(struct em8051 *aCPU)
 
     if (value)
     {
-        PC += (signed char)OPERAND2 + 3;
+        PC += (int8_t) OPERAND2 + 3;
     }
     else
     {
@@ -1585,7 +1585,7 @@ static uint8_t cjne_rx_imm_offset(struct em8051 *aCPU)
 
     if (aCPU->mLowerData[rx] != value)
     {
-        PC += (signed char)OPERAND2 + 3;
+        PC += (int8_t) OPERAND2 + 3;
     }
     else
     {
@@ -1610,7 +1610,7 @@ static uint8_t djnz_rx_offset(struct em8051 *aCPU)
     aCPU->mLowerData[rx]--;
     if (aCPU->mLowerData[rx])
     {
-        PC += (signed char)OPERAND1 + 2;
+        PC += (int8_t) OPERAND1 + 2;
     }
     else
     {
