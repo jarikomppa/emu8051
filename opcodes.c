@@ -264,12 +264,12 @@ static uint8_t jbc_bitaddr_offset(struct em8051 *aCPU)
     // -- MCS(r) 51 Microcontroller Family User's Manual
     uint8_t address = OPERAND1;
 
-    PC += 3;
-
     bool bit = read_bit_addr(aCPU, address);
     if (bit) {
-        PC += (int8_t) OPERAND2; // use the OPERAND2 as a signed char
+        PC += (int8_t) OPERAND2 + 3; // use the OPERAND2 as a signed char
         write_bit_addr(aCPU, address, false); // Clear the bit
+    } else {
+        PC += 3;
     }
 
     return 1;
