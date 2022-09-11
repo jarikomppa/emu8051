@@ -954,32 +954,8 @@ static uint8_t orl_c_compl_bitaddr(struct em8051 *aCPU)
 static uint8_t mov_c_bitaddr(struct em8051 *aCPU)
 {
     uint8_t address = OPERAND1;
-    if (address > 0x7f)
-    {
-        uint8_t bitaddr = address & 7;
-        uint8_t bitmask = (1 << bitaddr);
-        uint8_t value;
-        address &= 0xf8;        
-        if (aCPU->sfrread[address - 0x80])
-            value = aCPU->sfrread[address - 0x80](aCPU, address);
-        else
-            value = aCPU->mSFR[address - 0x80];
-
-        value = (value & bitmask) ? 1 : 0;
-
-        PSW = (PSW & ~PSWMASK_C) | (PSWMASK_C * value);
-    }
-    else
-    {
-        uint8_t bitaddr = address & 7;
-        uint8_t bitmask = (1 << bitaddr);
-        uint8_t value;
-        address >>= 3;
-        address += 0x20;
-        value = (aCPU->mLowerData[address] & bitmask) ? 1 : 0;
-        PSW = (PSW & ~PSWMASK_C) | (PSWMASK_C * value);
-    }
-
+    bool bit = read_bit_addr(aCPU, address);
+    PSW = (PSW & ~PSWMASK_C) | (PSWMASK_C * bit);
     PC += 2;
     return 0;
 }
