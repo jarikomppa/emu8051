@@ -943,33 +943,10 @@ static uint8_t subb_a_indir_rx(struct em8051 *aCPU)
 
 static uint8_t orl_c_compl_bitaddr(struct em8051 *aCPU)
 {
-    uint8_t address = OPERAND1;
+    uint8_t address = OPERAND1;;
     bool carry = CARRY;
-    if (address > 0x7f)
-    {
-        uint8_t bitaddr = address & 7;
-        uint8_t bitmask = (1 << bitaddr);
-        uint8_t value;
-        address &= 0xf8;        
-        if (aCPU->sfrread[address - 0x80])
-            value = aCPU->sfrread[address - 0x80](aCPU, address);
-        else
-            value = aCPU->mSFR[address - 0x80];
-
-        value = (value & bitmask) ? carry : 1;
-
-        PSW = (PSW & ~PSWMASK_C) | (PSWMASK_C * value);
-    }
-    else
-    {
-        uint8_t bitaddr = address & 7;
-        uint8_t bitmask = (1 << bitaddr);
-        uint8_t value;
-        address >>= 3;
-        address += 0x20;
-        value = (aCPU->mLowerData[address] & bitmask) ? carry : 1;
-        PSW = (PSW & ~PSWMASK_C) | (PSWMASK_C * value);
-    }
+    bool bit = read_bit_addr(aCPU, address);
+    PSW = (PSW & ~PSWMASK_C) | (PSWMASK_C * (carry | !bit));
     PC += 2;
     return 1;
 }
