@@ -10,7 +10,7 @@ Note on git history - when I wrote this, I kept version backups as zip files; I 
 What
 ====
 
-This is a simulator of the 8051/8052 microcontrollers. For sake of simplicity, I'm only referring to 8051, although the emulator can emulate either one. For more information about the 8-bit chip(s), please check out www.8052.com or look up the data sheets. Intel, being the originator of the architecture, naturally has information as well.
+This is a simulator of the 8051/8052 microcontrollers. For sake of simplicity, I'm only referring to 8051, although the emulator can emulate either one. For more information about the 8-bit chip(s), please check out [8052mcu.com](http://8052mcu.com/) or look up the data sheets. Intel, being the originator of the architecture, naturally has information as well.
 
 The 8051 is a pretty easy chip to play with, in both hardware and software. Hence, it's a good chip to use as an example when teaching about computer hardware. Unfortunately, the simulators in use in my school were a bit outdated, so I decided to write a new one.
 
