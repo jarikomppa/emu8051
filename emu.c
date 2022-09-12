@@ -302,7 +302,7 @@ int main(int parc, char ** pars)
     disasm_setptrs(&emu);
     op_setptrs(&emu);
 
-    reset(&emu, 1);
+    reset(&emu, RESET_RAM | RESET_SFR | RESET_ROM);
 
     if (parc > 1)
     {
@@ -547,11 +547,11 @@ int main(int parc, char ** pars)
             break;
         case 'z':
 	    // Equivalent of "R)eset (init regs, set PC to zero)"
-	    reset(&emu, 0);
+	    reset(&emu, RESET_SFR);
 	    break;
         case 'Z':
-	    // Equivalent of "W)ipe (init regs, set PC to zero, clear memory)"
-	    reset(&emu, 1);
+	    // Equivalent of "P)ower-cycle (init regs, set PC to zero, clear memory)"
+	    reset(&emu, RESET_RAM | RESET_SFR);
 	    break;
         case KEY_END:
             clocks = 0;

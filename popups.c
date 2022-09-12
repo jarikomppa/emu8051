@@ -391,8 +391,10 @@ int emu_reset(struct em8051 *aCPU)
     wmove(exc, 3, 2);
     waddstr(exc, "R)eset (init regs, set PC to zero)");
     wmove(exc, 4, 2);
-    waddstr(exc, "W)ipe (init regs, set PC to zero, clear memory)");
+    waddstr(exc, "P)ower-cycle (init regs, set PC to zero, clear memory)");
     wmove(exc, 6, 2);
+    waddstr(exc, "W)ipe (fully erase the chip, *including* ROM)");
+    wmove(exc, 8, 2);
     waddstr(exc, "z/Z from main screen are shortcuts to HOME+R or HOME+W");
     wrefresh(exc);
 
@@ -407,12 +409,17 @@ int emu_reset(struct em8051 *aCPU)
         break;
     case 'r':
     case 'R':
-        reset(aCPU, 0);
+        reset(aCPU, RESET_SFR);
+        result = 1;
+        break;
+    case 'p':
+    case 'P':
+        reset(aCPU, RESET_SFR | RESET_RAM);
         result = 1;
         break;
     case 'w':
     case 'W':
-        reset(aCPU, 1);
+        reset(aCPU, RESET_SFR | RESET_RAM | RESET_ROM);
         result = 1;
         break;
     }
