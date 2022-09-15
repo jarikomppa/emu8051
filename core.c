@@ -477,7 +477,11 @@ bool tick(struct em8051 *aCPU)
         if (is_idle) {
             aCPU->mTickDelay = 1;
         } else {
+#ifdef USE_SWITCH_DISPATCH
+            aCPU->mTickDelay = do_op(aCPU);
+#else // USE_SWITCH_DISPATCH
             aCPU->mTickDelay = aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemMaxIdx)]](aCPU);
+#endif // USE_SWITCH_DISPATCH
         }
         ticked = true;
         // update parity bit
@@ -505,48 +509,51 @@ uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer)
         strcpy(aBuffer, "POWER DOWN");
         return 0;
     }
+#ifdef USE_SWITCH_DISPATCH
+    return do_dec(aCPU, aPosition, aBuffer);
+#else // USE_SWITCH_DISPATCH
     return aCPU->dec[aCPU->mCodeMem[aPosition & (aCPU->mCodeMemMaxIdx)]](aCPU, aPosition, aBuffer);
+#endif // USE_SWITCH_DISPATCH
 }
 
-void disasm_setptrs(struct em8051 *aCPU);
-void op_setptrs(struct em8051 *aCPU);
-
-void reset(struct em8051 *aCPU, bool aWipe)
+void reset(struct em8051 *aCPU, int aWipe)
 {
-    // clear memory, set registers to bootup values, etc    
-    if (aWipe)
+    // clear memory
+    if (aWipe & RESET_RAM)
     {
-        memset(aCPU->mCodeMem, 0, aCPU->mCodeMemMaxIdx+1);
         memset(aCPU->mExtData, 0, aCPU->mExtDataMaxIdx+1);
         memset(aCPU->mLowerData, 0, 128);
         if (aCPU->mUpperData) 
             memset(aCPU->mUpperData, 0, 128);
     }
 
-    memset(aCPU->mSFR, 0, 128);
+    // Wipe out Code Region
+    if (aWipe & RESET_ROM)
+        memset(aCPU->mCodeMem, 0, aCPU->mCodeMemMaxIdx+1);
 
-    aCPU->mPC = 0;
-    aCPU->mTickDelay = 0;
-    aCPU->mSFR[REG_SP] = 7;
-    aCPU->mSFR[REG_P0] = 0xff;
-    aCPU->mSFR[REG_P1] = 0xff;
-    aCPU->mSFR[REG_P2] = 0xff;
-    aCPU->mSFR[REG_P3] = 0xff;
+    if (aWipe & RESET_SFR)
+    {
+        // set registers to bootup values, etc
+        memset(aCPU->mSFR, 0, 128);
+
+        aCPU->mPC = 0;
+        aCPU->mTickDelay = 0;
+        aCPU->mSFR[REG_SP] = 7;
+        aCPU->mSFR[REG_P0] = 0xff;
+        aCPU->mSFR[REG_P1] = 0xff;
+        aCPU->mSFR[REG_P2] = 0xff;
+        aCPU->mSFR[REG_P3] = 0xff;
+        aCPU->mSFR[REG_PCON] = 0x00;
+
+        // Random values
+        aCPU->mSFR[REG_SBUF] = rand();
+    }
 
     // Power-off flag will be 1 only after a power on (cold reset).
     // A warm reset doesn’t affect the value of this bit
     // ... Therefore, we only set it if aWipe is 1
-    if (aWipe)
+    if (aWipe & RESET_RAM)
         aCPU->mSFR[REG_PCON] |= (1<<4);
-
-    // Random values
-    if (aWipe)
-        aCPU->mSFR[REG_SBUF] = rand();
-
-    // build function pointer lists
-
-    disasm_setptrs(aCPU);
-    op_setptrs(aCPU);
 
     // Clean internal variables
     aCPU->mInterruptActive = 0;

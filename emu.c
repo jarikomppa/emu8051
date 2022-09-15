@@ -272,6 +272,12 @@ void change_view(struct em8051 *aCPU, int changeto)
     }
 }
 
+#if USE_SWITCH_DISPATCH
+#else // USE_SWITCH_DISPATCH
+void disasm_setptrs(struct em8051 *aCPU);
+void op_setptrs(struct em8051 *aCPU);
+#endif // USE_SWITCH_DISPATCH
+
 int main(int parc, char ** pars)
 {
     int ch = 0;
@@ -296,7 +302,13 @@ int main(int parc, char ** pars)
     emu.sfrread[REG_P2] = emu_sfrread;
     emu.sfrread[REG_P3] = emu_sfrread;
 
-    reset(&emu, 1);
+#ifdef USE_SWITCH_DISPATCH
+#else // USE_SWITCH_DISPATCH
+    disasm_setptrs(&emu);
+    op_setptrs(&emu);
+#endif // USE_SWITCH_DISPATCH
+
+    reset(&emu, RESET_RAM | RESET_SFR | RESET_ROM);
 
     if (parc > 1)
     {
@@ -541,11 +553,11 @@ int main(int parc, char ** pars)
             break;
         case 'z':
 	    // Equivalent of "R)eset (init regs, set PC to zero)"
-	    reset(&emu, 0);
+	    reset(&emu, RESET_SFR);
 	    break;
         case 'Z':
-	    // Equivalent of "W)ipe (init regs, set PC to zero, clear memory)"
-	    reset(&emu, 1);
+	    // Equivalent of "P)ower-cycle (init regs, set PC to zero, clear memory)"
+	    reset(&emu, RESET_RAM | RESET_SFR);
 	    break;
         case KEY_END:
             clocks = 0;

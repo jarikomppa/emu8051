@@ -96,7 +96,7 @@ struct em8051
 // set the emulator into reset state. Must be called before tick(), as
 // it also initializes the function pointers. aWipe tells whether to reset
 // all memory to zero.
-void reset(struct em8051 *aCPU, bool aWipe);
+void reset(struct em8051 *aCPU, int aWipe);
 
 // run one emulator tick, or 12 hardware clock cycles.
 // returns "true" if a new operation was executed.
@@ -106,6 +106,7 @@ bool tick(struct em8051 *aCPU);
 // buffer must be big enough (64 bytes is very safe). 
 // Returns length of opcode.
 uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer);
+uint8_t do_dec(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer);
 
 // Load an intel hex format object file. Returns negative for errors.
 int load_obj(struct em8051 *aCPU, char *aFilename);
@@ -260,3 +261,10 @@ enum EM8051_EXCEPTION
     EXCEPTION_ILLEGAL_OPCODE     // for the single 'reserved' opcode in the architecture
 };
 
+enum EM8051_RESET
+{
+    RESET_NONE  = 0x00,  // No RESET
+    RESET_SFR   = 0x01,  // Wipe SFR
+    RESET_RAM   = 0x02,  // Wipe RAM
+    RESET_ROM   = 0x04,  // Wipe CODE
+};
