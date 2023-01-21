@@ -1335,8 +1335,9 @@ static uint8_t xchd_a_indir_rx(struct em8051 *aCPU)
 {
     uint8_t address = INDIR_RX_ADDRESS;
     uint8_t value = read_mem_indir(aCPU, address);
+    uint8_t nibble = ACC & 0x0f;
     ACC = (ACC & 0xf0) | (value & 0x0f);
-    value = (value & 0xf0) | (ACC & 0x0f);
+    value = (value & 0xf0) | nibble;
     write_mem_indir(aCPU, address, value);
     PC++;
     return 0;
