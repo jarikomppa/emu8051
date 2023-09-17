@@ -3,7 +3,8 @@
 #####################################################################
 BIN := emu
 
-CFLAGS += -O2
+OPTIM=g
+CFLAGS += -O$(OPTIM)
 CFLAGS += -pipe
 CFLAGS += -g -Wall -Wextra -Wno-unused-parameter -Wshadow
 
