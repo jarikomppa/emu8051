@@ -392,6 +392,23 @@ int main(int parc, char ** pars)
                         opt_clock_hz = 1;
                 }
                 else
+                if (strncmp("vcdin=",pars[i]+1,6) == 0)
+                {
+                    char *vcd_in_filename = pars[i]+7;
+                    init_vcd_in(vcd_in_filename);
+                }
+                else
+                if (strncmp("vcdout=",pars[i]+1,7) == 0)
+                {
+                    char *vcd_out_filename = pars[i]+8;
+                    init_vcd_out(vcd_out_filename);
+                }
+                else
+                if (strncmp("vcdoutsync",pars[i]+1,10) == 0)
+                {
+                    set_vcd_out_sync(1);
+                }
+                else
                 {
                     printf("Help:\n\n"
                         "emu8051 [options] [filename]\n\n"
@@ -407,6 +424,9 @@ int main(int parc, char ** pars)
                         "-iolowlow         If out pin is low, hi input from same pin is low\n"
                         "-iolowrand        If out pin is low, hi input from same pin is random\n"
                         "-clock=value      Set clock speed, in Hz\n"
+                        "-vcdin=value      Set input VCD file\n"
+                        "-vcdout=value     Set output VCD file\n"
+                        "-vcdoutsync       Flush output to VCD file after each cycle\n"
                         );
                     return -1;
                 }

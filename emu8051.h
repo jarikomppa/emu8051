@@ -260,3 +260,6 @@ enum EM8051_EXCEPTION
     EXCEPTION_ILLEGAL_OPCODE     // for the single 'reserved' opcode in the architecture
 };
 
+void init_vcd_in(char *filename);
+void init_vcd_out(char *filename);
+void set_vcd_out_sync(int sync);
