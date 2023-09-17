@@ -45,6 +45,8 @@
 #include "emu8051.h"
 #include "emulator.h"
 
+#define CYCLES_PER_INSTR 12
+
 unsigned char history[HISTORY_LINES * (128 + 64 + sizeof(int))];
 
 
@@ -619,7 +621,7 @@ int main(int parc, char ** pars)
                     while (!ticked)
                     {
                         targetclocks--;
-                        clocks += 12;
+                        clocks += CYCLES_PER_INSTR;
                         ticked = tick(&emu);
                         logicboard_tick(&emu);
                     }
@@ -627,7 +629,7 @@ int main(int parc, char ** pars)
                 else
                 {
                     targetclocks--;
-                    clocks += 12;
+                    clocks += CYCLES_PER_INSTR;
                     ticked = tick(&emu);
                     logicboard_tick(&emu);
                 }
