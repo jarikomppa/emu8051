@@ -45,7 +45,9 @@
 #include "emu8051.h"
 #include "emulator.h"
 
+#ifndef CYCLES_PER_INSTR
 #define CYCLES_PER_INSTR 12
+#endif // CYCLES_PER_INSTR
 
 unsigned char history[HISTORY_LINES * (128 + 64 + sizeof(int))];
 

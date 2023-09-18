@@ -3,10 +3,12 @@
 #####################################################################
 BIN := emu
 
+CYCLES_PER_INSTR=12
 OPTIM=g
 CFLAGS += -O$(OPTIM)
 CFLAGS += -pipe
 CFLAGS += -g -Wall -Wextra -Wno-unused-parameter -Wshadow
+CFLAGS += -DCYCLES_PER_INSTR=$(CYCLES_PER_INSTR)
 
 # Uncomment to activate LTO
 #CFLAGS += -flto
