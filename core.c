@@ -456,9 +456,9 @@ bool tick(struct em8051 *aCPU)
     }
 
     // Test for Power Down
-    if (aCPU->mTickDelay == 0 && (aCPU->mSFR[REG_PCON]) & 0x02) {
-        aCPU->mTickDelay = 1;
-        return 1;
+    bool is_powerdown = (aCPU->mSFR[REG_PCON]) & 0x02;
+    if (is_powerdown) {
+        return false; // Nothing happens, not even timers
     }
 
     // Interrupts are sent if the following cases are not true:
@@ -470,16 +470,14 @@ bool tick(struct em8051 *aCPU)
         handle_interrupts(aCPU);
     }
 
-    if (aCPU->mTickDelay == 0)
+    // IDL activate the idle mode to save power
+    // Interrupts can wake the CPU up so we have to check _after_ handle_interrupts()
+    bool is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
+    if (! is_idle && aCPU->mTickDelay == 0)
     {
-        // IDL activate the idle mode to save power
-        bool is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
-        if (is_idle) {
-            aCPU->mTickDelay = 1;
-        } else {
-            aCPU->mTickDelay = aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemMaxIdx)]](aCPU);
-        }
+        aCPU->mTickDelay = aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemMaxIdx)]](aCPU);
         ticked = true;
+
         // update parity bit
         v = aCPU->mSFR[REG_ACC];
         v ^= v >> 4;
@@ -490,7 +488,7 @@ bool tick(struct em8051 *aCPU)
 
     timer_tick(aCPU);
 
-    return ticked;
+    return ticked || is_idle;
 }
 
 uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer)
