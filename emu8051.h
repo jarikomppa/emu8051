@@ -70,7 +70,7 @@ struct em8051
     unsigned char *mUpperData; // 0 or 128 bytes; leave to NULL if none
     unsigned char mSFR[128]; // 128 bytes; (special function registers)
     uint16_t mPC; // Program Counter; outside memory area
-    uint8_t mTickDelay; // How many ticks should we delay before continuing
+    uint8_t mTickDelay; // How many ticks does that instruction still need
     em8051operation op[256]; // function pointers to opcode handlers
     em8051decoder dec[256]; // opcode-to-string decoder handlers    
     em8051exception except; // callback: exceptional situation occurred
@@ -101,7 +101,7 @@ struct em8051
 void reset(struct em8051 *aCPU, int aWipe);
 
 // run one emulator tick, or 12 hardware clock cycles.
-// returns "true" if a new operation was executed.
+// returns "true" if some refresh is needed
 bool tick(struct em8051 *aCPU);
 
 // decode the next operation as character string.
