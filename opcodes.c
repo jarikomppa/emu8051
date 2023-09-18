@@ -1808,7 +1808,8 @@ void op_setptrs(struct em8051 *aCPU)
 
 uint8_t do_op(struct em8051 *aCPU)
 {
-    switch (OPCODE)
+    uint8_t opcode = OPCODE;
+    switch (opcode)
     {
     case 0x00: return nop(aCPU);
     case 0x01: return ajmp_offset(aCPU);
