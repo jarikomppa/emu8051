@@ -91,6 +91,8 @@ struct em8051
     uint8_t serial_out_idx;
     uint8_t serial_out_remaining_bits;
     bool serial_interrupt_trigger;
+
+    unsigned int clocks;
 };
 
 // set the emulator into reset state. Must be called before tick(), as

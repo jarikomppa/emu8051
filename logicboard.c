@@ -835,9 +835,9 @@ void print_vcd(struct em8051 *aCPU) {
 	    int current_port_value = aCPU->mSFR[REG_P0 + idx * 0x10];
 	    if (oldports[idx] == current_port_value) continue;
 
-	    if (last_emitted_clocks < clocks) {
-            fprintf(vcd_out, "\n#%d ", clocks);
-            last_emitted_clocks = clocks;
+	    if (last_emitted_clocks < aCPU->clocks) {
+            fprintf(vcd_out, "\n#%d ", aCPU->clocks);
+            last_emitted_clocks = aCPU->clocks;
 	    }
 
 	    for (int b = 0; b < 8; b++)

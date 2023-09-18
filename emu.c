@@ -64,9 +64,6 @@ int speed = 6;
 // instruction count; needed to replay history correctly
 unsigned int icount = 0;
 
-// current clock count
-unsigned int clocks = 0;
-
 // currently active view
 int view = MAIN_VIEW;
 
@@ -571,7 +568,7 @@ int main(int parc, char ** pars)
         case KEY_HOME:
             if (emu_reset(&emu))
             {
-                clocks = 0;
+                emu.clocks = 0;
                 ticked = 1;
             }
             break;
@@ -584,7 +581,7 @@ int main(int parc, char ** pars)
 	    reset(&emu, RESET_RAM | RESET_SFR);
 	    break;
         case KEY_END:
-            clocks = 0;
+            emu.clocks = 0;
             ticked = 1;
             break;
         default:
@@ -635,7 +632,7 @@ int main(int parc, char ** pars)
                     while (!ticked)
                     {
                         targetclocks--;
-                        clocks += CYCLES_PER_INSTR;
+                        emu.clocks += CYCLES_PER_INSTR;
                         ticked = tick(&emu);
                         logicboard_tick(&emu);
                     }
@@ -643,7 +640,7 @@ int main(int parc, char ** pars)
                 else
                 {
                     targetclocks--;
-                    clocks += CYCLES_PER_INSTR;
+                    emu.clocks += CYCLES_PER_INSTR;
                     ticked = tick(&emu);
                     logicboard_tick(&emu);
                 }

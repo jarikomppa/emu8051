@@ -62,9 +62,6 @@ extern int view;
 // old port out values
 extern int pout[];
 
-// current clock count
-extern unsigned int clocks;
-
 extern int opt_exception_iret_sp;
 extern int opt_exception_iret_acc;
 extern int opt_exception_iret_psw;
