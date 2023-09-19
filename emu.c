@@ -629,7 +629,7 @@ int main(int parc, char ** pars)
                 if (opt_step_instruction)
                 {
                     ticked = 0;
-                    while (!ticked)
+                    while (! ticked || emu.mTickDelay)
                     {
                         targetclocks--;
                         emu.clocks += CYCLES_PER_INSTR;
