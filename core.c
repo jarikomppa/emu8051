@@ -464,7 +464,13 @@ bool tick(struct em8051 *aCPU)
 
     if (aCPU->mTickDelay)
     {
-        aCPU->mTickDelay--;
+        aCPU->mTickDelay--; // Still executing the current instruction
+        timer_tick(aCPU); // execute timers
+
+        // If we are now in the last cycle for the instruction, update PC
+        if (aCPU->mTickDelay  == 0) aCPU->mPC = aCPU->mPCSaved;
+
+        return true;
     }
 
     // Test for Power Down
@@ -481,6 +487,8 @@ bool tick(struct em8051 *aCPU)
     {
         handle_interrupts(aCPU);
     }
+
+    uint16_t old_pc = aCPU->mPC;
 
     // IDL activate the idle mode to save power
     // Interrupts can wake the CPU up so we have to check _after_ handle_interrupts()
@@ -500,6 +508,12 @@ bool tick(struct em8051 *aCPU)
 
     timer_tick(aCPU);
 
+    if (aCPU->mTickDelay > 0) {
+        // if multi cycle instr, do no yet update PC
+        aCPU->mPCSaved = aCPU->mPC;
+        aCPU->mPC = old_pc;
+    }
+
     return ticked || is_idle;
 }
 
@@ -515,6 +529,13 @@ uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer)
         strcpy(aBuffer, "POWER DOWN");
         return 0;
     }
+
+    if (aCPU->mTickDelay > 0) {
+        // Current instruction has not finished executing
+        strcpy(aBuffer, "...");
+        return 0;
+    }
+
 #if USE_SWITCH_DISPATCH
     return do_dec(aCPU, aPosition, aBuffer);
 #else // USE_SWITCH_DISPATCH

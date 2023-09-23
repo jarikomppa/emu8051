@@ -70,6 +70,7 @@ struct em8051
     unsigned char *mUpperData; // 0 or 128 bytes; leave to NULL if none
     unsigned char mSFR[128]; // 128 bytes; (special function registers)
     uint16_t mPC; // Program Counter; outside memory area
+    uint16_t mPCSaved; // Program Counter saved for multi cycle instructions
     uint8_t mTickDelay; // How many ticks does that instruction still need
     em8051operation op[256]; // function pointers to opcode handlers
     em8051decoder dec[256]; // opcode-to-string decoder handlers    
