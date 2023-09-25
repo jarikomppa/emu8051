@@ -1636,6 +1636,7 @@ static uint8_t mov_rx_a(struct em8051 *aCPU)
     return 0;
 }
 
+#ifndef USE_SWITCH_DISPATCH
 void op_setptrs(struct em8051 *aCPU)
 {
     uint8_t i;
@@ -1803,9 +1804,12 @@ void op_setptrs(struct em8051 *aCPU)
     aCPU->op[0xf7] = &mov_indir_rx_a;
 }
 
+#else // USE_SWITCH_DISPATCH
+
 uint8_t do_op(struct em8051 *aCPU)
 {
-    switch (OPCODE)
+    uint8_t opcode = OPCODE;
+    switch (opcode)
     {
     case 0x00: return nop(aCPU);
     case 0x01: return ajmp_offset(aCPU);
@@ -2097,4 +2101,5 @@ uint8_t do_op(struct em8051 *aCPU)
    }
     return 0;
 }
+#endif // USE_SWITCH_DISPATCH
 

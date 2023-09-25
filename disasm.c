@@ -1090,6 +1090,8 @@ static uint8_t disasm_mov_rx_a(struct em8051 *aCPU, uint16_t aPosition, char *aB
     return 1;
 }
 
+#ifndef USE_SWITCH_DISPATCH
+
 void disasm_setptrs(struct em8051 *aCPU)
 {
     int i;
@@ -1256,3 +1258,302 @@ void disasm_setptrs(struct em8051 *aCPU)
     aCPU->dec[0xf6] = &disasm_mov_indir_rx_a;
     aCPU->dec[0xf7] = &disasm_mov_indir_rx_a;
 }
+
+#else // USE_SWITCH_DISPATCH
+
+uint8_t do_dec(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer)
+{
+    switch (OPCODE)
+    {
+        case 0x00: return disasm_nop(aCPU, aPosition, aBuffer);
+        case 0x01: return disasm_ajmp_offset(aCPU, aPosition, aBuffer);
+        case 0x02: return disasm_ljmp_address(aCPU, aPosition, aBuffer);
+        case 0x03: return disasm_rr_a(aCPU, aPosition, aBuffer);
+        case 0x04: return disasm_inc_a(aCPU, aPosition, aBuffer);
+        case 0x05: return disasm_inc_mem(aCPU, aPosition, aBuffer);
+        case 0x06: return disasm_inc_indir_rx(aCPU, aPosition, aBuffer);
+        case 0x07: return disasm_inc_indir_rx(aCPU, aPosition, aBuffer);
+
+        case 0x08:
+        case 0x09:
+        case 0x0a:
+        case 0x0b:
+        case 0x0c:
+        case 0x0d:
+        case 0x0e:
+        case 0x0f: return disasm_inc_rx(aCPU, aPosition, aBuffer);
+
+        case 0x10: return disasm_jbc_bitaddr_offset(aCPU, aPosition, aBuffer);
+        case 0x11: return disasm_acall_offset(aCPU, aPosition, aBuffer);
+        case 0x12: return disasm_lcall_address(aCPU, aPosition, aBuffer);
+        case 0x13: return disasm_rrc_a(aCPU, aPosition, aBuffer);
+        case 0x14: return disasm_dec_a(aCPU, aPosition, aBuffer);
+        case 0x15: return disasm_dec_mem(aCPU, aPosition, aBuffer);
+        case 0x16: return disasm_dec_indir_rx(aCPU, aPosition, aBuffer);
+        case 0x17: return disasm_dec_indir_rx(aCPU, aPosition, aBuffer);
+
+        case 0x18:
+        case 0x19:
+        case 0x1a:
+        case 0x1b:
+        case 0x1c:
+        case 0x1d:
+        case 0x1e:
+        case 0x1f: return disasm_dec_rx(aCPU, aPosition, aBuffer);
+
+        case 0x20: return disasm_jb_bitaddr_offset(aCPU, aPosition, aBuffer);
+        case 0x21: return disasm_ajmp_offset(aCPU, aPosition, aBuffer);
+        case 0x22: return disasm_ret(aCPU, aPosition, aBuffer);
+        case 0x23: return disasm_rl_a(aCPU, aPosition, aBuffer);
+        case 0x24: return disasm_add_a_imm(aCPU, aPosition, aBuffer);
+        case 0x25: return disasm_add_a_mem(aCPU, aPosition, aBuffer);
+        case 0x26: return disasm_add_a_indir_rx(aCPU, aPosition, aBuffer);
+        case 0x27: return disasm_add_a_indir_rx(aCPU, aPosition, aBuffer);
+
+        case 0x28:
+        case 0x29:
+        case 0x2a:
+        case 0x2b:
+        case 0x2c:
+        case 0x2d:
+        case 0x2e:
+        case 0x2f: return disasm_add_a_rx(aCPU, aPosition, aBuffer);
+
+        case 0x30: return disasm_jnb_bitaddr_offset(aCPU, aPosition, aBuffer);
+        case 0x31: return disasm_acall_offset(aCPU, aPosition, aBuffer);
+        case 0x32: return disasm_reti(aCPU, aPosition, aBuffer);
+        case 0x33: return disasm_rlc_a(aCPU, aPosition, aBuffer);
+        case 0x34: return disasm_addc_a_imm(aCPU, aPosition, aBuffer);
+        case 0x35: return disasm_addc_a_mem(aCPU, aPosition, aBuffer);
+        case 0x36: return disasm_addc_a_indir_rx(aCPU, aPosition, aBuffer);
+        case 0x37: return disasm_addc_a_indir_rx(aCPU, aPosition, aBuffer);
+
+        case 0x38:
+        case 0x39:
+        case 0x3a:
+        case 0x3b:
+        case 0x3c:
+        case 0x3d:
+        case 0x3e:
+        case 0x3f: return disasm_addc_a_rx(aCPU, aPosition, aBuffer);
+
+        case 0x40: return disasm_jc_offset(aCPU, aPosition, aBuffer);
+        case 0x41: return disasm_ajmp_offset(aCPU, aPosition, aBuffer);
+        case 0x42: return disasm_orl_mem_a(aCPU, aPosition, aBuffer);
+        case 0x43: return disasm_orl_mem_imm(aCPU, aPosition, aBuffer);
+        case 0x44: return disasm_orl_a_imm(aCPU, aPosition, aBuffer);
+        case 0x45: return disasm_orl_a_mem(aCPU, aPosition, aBuffer);
+        case 0x46: return disasm_orl_a_indir_rx(aCPU, aPosition, aBuffer);
+        case 0x47: return disasm_orl_a_indir_rx(aCPU, aPosition, aBuffer);
+
+        case 0x48:
+        case 0x49:
+        case 0x4a:
+        case 0x4b:
+        case 0x4c:
+        case 0x4d:
+        case 0x4e:
+        case 0x4f: return disasm_orl_a_rx(aCPU, aPosition, aBuffer);
+
+        case 0x50: return disasm_jnc_offset(aCPU, aPosition, aBuffer);
+        case 0x51: return disasm_acall_offset(aCPU, aPosition, aBuffer);
+        case 0x52: return disasm_anl_mem_a(aCPU, aPosition, aBuffer);
+        case 0x53: return disasm_anl_mem_imm(aCPU, aPosition, aBuffer);
+        case 0x54: return disasm_anl_a_imm(aCPU, aPosition, aBuffer);
+        case 0x55: return disasm_anl_a_mem(aCPU, aPosition, aBuffer);
+        case 0x56: return disasm_anl_a_indir_rx(aCPU, aPosition, aBuffer);
+        case 0x57: return disasm_anl_a_indir_rx(aCPU, aPosition, aBuffer);
+
+        case 0x58:
+        case 0x59:
+        case 0x5a:
+        case 0x5b:
+        case 0x5c:
+        case 0x5d:
+        case 0x5e:
+        case 0x5f: return disasm_anl_a_rx(aCPU, aPosition, aBuffer);
+
+        case 0x60: return disasm_jz_offset(aCPU, aPosition, aBuffer);
+        case 0x61: return disasm_ajmp_offset(aCPU, aPosition, aBuffer);
+        case 0x62: return disasm_xrl_mem_a(aCPU, aPosition, aBuffer);
+        case 0x63: return disasm_xrl_mem_imm(aCPU, aPosition, aBuffer);
+        case 0x64: return disasm_xrl_a_imm(aCPU, aPosition, aBuffer);
+        case 0x65: return disasm_xrl_a_mem(aCPU, aPosition, aBuffer);
+        case 0x66: return disasm_xrl_a_indir_rx(aCPU, aPosition, aBuffer);
+        case 0x67: return disasm_xrl_a_indir_rx(aCPU, aPosition, aBuffer);
+
+        case 0x68:
+        case 0x69:
+        case 0x6a:
+        case 0x6b:
+        case 0x6c:
+        case 0x6d:
+        case 0x6e:
+        case 0x6f: return disasm_xrl_a_rx(aCPU, aPosition, aBuffer);
+
+        case 0x70: return disasm_jnz_offset(aCPU, aPosition, aBuffer);
+        case 0x71: return disasm_acall_offset(aCPU, aPosition, aBuffer);
+        case 0x72: return disasm_orl_c_bitaddr(aCPU, aPosition, aBuffer);
+        case 0x73: return disasm_jmp_indir_a_dptr(aCPU, aPosition, aBuffer);
+        case 0x74: return disasm_mov_a_imm(aCPU, aPosition, aBuffer);
+        case 0x75: return disasm_mov_mem_imm(aCPU, aPosition, aBuffer);
+        case 0x76: return disasm_mov_indir_rx_imm(aCPU, aPosition, aBuffer);
+        case 0x77: return disasm_mov_indir_rx_imm(aCPU, aPosition, aBuffer);
+
+        case 0x78:
+        case 0x79:
+        case 0x7a:
+        case 0x7b:
+        case 0x7c:
+        case 0x7d:
+        case 0x7e:
+        case 0x7f: return disasm_mov_rx_imm(aCPU, aPosition, aBuffer);
+
+        case 0x80: return disasm_sjmp_offset(aCPU, aPosition, aBuffer);
+        case 0x81: return disasm_ajmp_offset(aCPU, aPosition, aBuffer);
+        case 0x82: return disasm_anl_c_bitaddr(aCPU, aPosition, aBuffer);
+        case 0x83: return disasm_movc_a_indir_a_pc(aCPU, aPosition, aBuffer);
+        case 0x84: return disasm_div_ab(aCPU, aPosition, aBuffer);
+        case 0x85: return disasm_mov_mem_mem(aCPU, aPosition, aBuffer);
+        case 0x86: return disasm_mov_mem_indir_rx(aCPU, aPosition, aBuffer);
+        case 0x87: return disasm_mov_mem_indir_rx(aCPU, aPosition, aBuffer);
+
+        case 0x88:
+        case 0x89:
+        case 0x8a:
+        case 0x8b:
+        case 0x8c:
+        case 0x8d:
+        case 0x8e:
+        case 0x8f: return disasm_mov_mem_rx(aCPU, aPosition, aBuffer);
+
+        case 0x90: return disasm_mov_dptr_imm(aCPU, aPosition, aBuffer);
+        case 0x91: return disasm_acall_offset(aCPU, aPosition, aBuffer);
+        case 0x92: return disasm_mov_bitaddr_c(aCPU, aPosition, aBuffer);
+        case 0x93: return disasm_movc_a_indir_a_dptr(aCPU, aPosition, aBuffer);
+        case 0x94: return disasm_subb_a_imm(aCPU, aPosition, aBuffer);
+        case 0x95: return disasm_subb_a_mem(aCPU, aPosition, aBuffer);
+        case 0x96: return disasm_subb_a_indir_rx(aCPU, aPosition, aBuffer);
+        case 0x97: return disasm_subb_a_indir_rx(aCPU, aPosition, aBuffer);
+
+        case 0x98:
+        case 0x99:
+        case 0x9a:
+        case 0x9b:
+        case 0x9c:
+        case 0x9d:
+        case 0x9e:
+        case 0x9f: return disasm_subb_a_rx(aCPU, aPosition, aBuffer);
+
+        case 0xa0: return disasm_orl_c_compl_bitaddr(aCPU, aPosition, aBuffer);
+        case 0xa1: return disasm_ajmp_offset(aCPU, aPosition, aBuffer);
+        case 0xa2: return disasm_mov_c_bitaddr(aCPU, aPosition, aBuffer);
+        case 0xa3: return disasm_inc_dptr(aCPU, aPosition, aBuffer);
+        case 0xa4: return disasm_mul_ab(aCPU, aPosition, aBuffer);
+        case 0xa5: return disasm_nop(aCPU, aPosition, aBuffer); // unused
+        case 0xa6: return disasm_mov_indir_rx_mem(aCPU, aPosition, aBuffer);
+        case 0xa7: return disasm_mov_indir_rx_mem(aCPU, aPosition, aBuffer);
+
+        case 0xa8:
+        case 0xa9:
+        case 0xaa:
+        case 0xab:
+        case 0xac:
+        case 0xad:
+        case 0xae:
+        case 0xaf: return disasm_mov_rx_mem(aCPU, aPosition, aBuffer);
+
+        case 0xb0: return disasm_anl_c_compl_bitaddr(aCPU, aPosition, aBuffer);
+        case 0xb1: return disasm_acall_offset(aCPU, aPosition, aBuffer);
+        case 0xb2: return disasm_cpl_bitaddr(aCPU, aPosition, aBuffer);
+        case 0xb3: return disasm_cpl_c(aCPU, aPosition, aBuffer);
+        case 0xb4: return disasm_cjne_a_imm_offset(aCPU, aPosition, aBuffer);
+        case 0xb5: return disasm_cjne_a_mem_offset(aCPU, aPosition, aBuffer);
+        case 0xb6: return disasm_cjne_indir_rx_imm_offset(aCPU, aPosition, aBuffer);
+        case 0xb7: return disasm_cjne_indir_rx_imm_offset(aCPU, aPosition, aBuffer);
+
+        case 0xb8:
+        case 0xb9:
+        case 0xba:
+        case 0xbb:
+        case 0xbc:
+        case 0xbd:
+        case 0xbe:
+        case 0xbf: return disasm_cjne_rx_imm_offset(aCPU, aPosition, aBuffer);
+
+        case 0xc0: return disasm_push_mem(aCPU, aPosition, aBuffer);
+        case 0xc1: return disasm_ajmp_offset(aCPU, aPosition, aBuffer);
+        case 0xc2: return disasm_clr_bitaddr(aCPU, aPosition, aBuffer);
+        case 0xc3: return disasm_clr_c(aCPU, aPosition, aBuffer);
+        case 0xc4: return disasm_swap_a(aCPU, aPosition, aBuffer);
+        case 0xc5: return disasm_xch_a_mem(aCPU, aPosition, aBuffer);
+        case 0xc6: return disasm_xch_a_indir_rx(aCPU, aPosition, aBuffer);
+        case 0xc7: return disasm_xch_a_indir_rx(aCPU, aPosition, aBuffer);
+
+        case 0xc8:
+        case 0xc9:
+        case 0xca:
+        case 0xcb:
+        case 0xcc:
+        case 0xcd:
+        case 0xce:
+        case 0xcf: return disasm_xch_a_rx(aCPU, aPosition, aBuffer);
+
+        case 0xd0: return disasm_pop_mem(aCPU, aPosition, aBuffer);
+        case 0xd1: return disasm_acall_offset(aCPU, aPosition, aBuffer);
+        case 0xd2: return disasm_setb_bitaddr(aCPU, aPosition, aBuffer);
+        case 0xd3: return disasm_setb_c(aCPU, aPosition, aBuffer);
+        case 0xd4: return disasm_da_a(aCPU, aPosition, aBuffer);
+        case 0xd5: return disasm_djnz_mem_offset(aCPU, aPosition, aBuffer);
+        case 0xd6: return disasm_xchd_a_indir_rx(aCPU, aPosition, aBuffer);
+        case 0xd7: return disasm_xchd_a_indir_rx(aCPU, aPosition, aBuffer);
+
+        case 0xd8:
+        case 0xd9:
+        case 0xda:
+        case 0xdb:
+        case 0xdc:
+        case 0xdd:
+        case 0xde:
+        case 0xdf: return disasm_djnz_rx_offset(aCPU, aPosition, aBuffer);
+
+        case 0xe0: return disasm_movx_a_indir_dptr(aCPU, aPosition, aBuffer);
+        case 0xe1: return disasm_ajmp_offset(aCPU, aPosition, aBuffer);
+        case 0xe2: return disasm_movx_a_indir_rx(aCPU, aPosition, aBuffer);
+        case 0xe3: return disasm_movx_a_indir_rx(aCPU, aPosition, aBuffer);
+        case 0xe4: return disasm_clr_a(aCPU, aPosition, aBuffer);
+        case 0xe5: return disasm_mov_a_mem(aCPU, aPosition, aBuffer);
+        case 0xe6: return disasm_mov_a_indir_rx(aCPU, aPosition, aBuffer);
+        case 0xe7: return disasm_mov_a_indir_rx(aCPU, aPosition, aBuffer);
+
+        case 0xe8:
+        case 0xe9:
+        case 0xea:
+        case 0xeb:
+        case 0xec:
+        case 0xed:
+        case 0xee:
+        case 0xef: return disasm_mov_a_rx(aCPU, aPosition, aBuffer);
+
+        case 0xf0: return disasm_movx_indir_dptr_a(aCPU, aPosition, aBuffer);
+        case 0xf1: return disasm_acall_offset(aCPU, aPosition, aBuffer);
+        case 0xf2: return disasm_movx_indir_rx_a(aCPU, aPosition, aBuffer);
+        case 0xf3: return disasm_movx_indir_rx_a(aCPU, aPosition, aBuffer);
+        case 0xf4: return disasm_cpl_a(aCPU, aPosition, aBuffer);
+        case 0xf5: return disasm_mov_mem_a(aCPU, aPosition, aBuffer);
+        case 0xf6: return disasm_mov_indir_rx_a(aCPU, aPosition, aBuffer);
+        case 0xf7: return disasm_mov_indir_rx_a(aCPU, aPosition, aBuffer);
+
+        case 0xf8:
+        case 0xf9:
+        case 0xfa:
+        case 0xfb:
+        case 0xfc:
+        case 0xfd:
+        case 0xfe:
+        case 0xff: return disasm_mov_rx_a(aCPU, aPosition, aBuffer);
+    }
+
+    return 0;
+}
+#endif // USE_SWITCH_DISPATCH

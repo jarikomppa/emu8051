@@ -30,6 +30,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
+
 #include "emu8051.h"
 
 static void serial_tx(struct em8051 *aCPU) {
@@ -51,7 +53,6 @@ static void serial_tx(struct em8051 *aCPU) {
 		if (aCPU->mSFR[REG_IE] & IEMASK_ES) aCPU->serial_interrupt_trigger = 1; // Trigger Serial Interrupt
 	}
 }
-
 
 static void timer_tick(struct em8051 *aCPU)
 {
@@ -445,6 +446,17 @@ void handle_interrupts(struct em8051 *aCPU)
     aCPU->int_sp[hi] = aCPU->mSFR[REG_SP];
 }
 
+void execute_current_opcode(struct em8051 *aCPU) {
+#if USE_SWITCH_DISPATCH
+        aCPU->mTickDelay = do_op(aCPU);
+#else // USE_SWITCH_DISPATCH
+        assert(aCPU->mPC <= aCPU->mCodeMemMaxIdx);
+        uint16_t addr = aCPU->mPC;
+        uint8_t opcode = aCPU->mCodeMem[addr];
+        aCPU->mTickDelay = aCPU->op[opcode](aCPU);
+#endif // USE_SWITCH_DISPATCH
+} 
+
 bool tick(struct em8051 *aCPU)
 {
     uint8_t v;
@@ -452,13 +464,20 @@ bool tick(struct em8051 *aCPU)
 
     if (aCPU->mTickDelay)
     {
-        aCPU->mTickDelay--;
+        aCPU->mTickDelay--; // Still executing the current instruction
+        aCPU->first_cycle = false;
+        timer_tick(aCPU); // execute timers
+
+        // If we are now in the last cycle for the instruction, update PC
+        if (aCPU->mTickDelay  == 0) aCPU->mPC = aCPU->mPCSaved;
+
+        return true;
     }
 
     // Test for Power Down
-    if (aCPU->mTickDelay == 0 && (aCPU->mSFR[REG_PCON]) & 0x02) {
-        aCPU->mTickDelay = 1;
-        return 1;
+    bool is_powerdown = (aCPU->mSFR[REG_PCON]) & 0x02;
+    if (is_powerdown) {
+        return false; // Nothing happens, not even timers
     }
 
     // Interrupts are sent if the following cases are not true:
@@ -470,16 +489,17 @@ bool tick(struct em8051 *aCPU)
         handle_interrupts(aCPU);
     }
 
-    if (aCPU->mTickDelay == 0)
+    uint16_t old_pc = aCPU->mPC;
+
+    // IDL activate the idle mode to save power
+    // Interrupts can wake the CPU up so we have to check _after_ handle_interrupts()
+    bool is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
+    if (! is_idle && aCPU->mTickDelay == 0)
     {
-        // IDL activate the idle mode to save power
-        bool is_idle = (aCPU->mSFR[REG_PCON]) & 0x01;
-        if (is_idle) {
-            aCPU->mTickDelay = 1;
-        } else {
-            aCPU->mTickDelay = aCPU->op[aCPU->mCodeMem[aCPU->mPC & (aCPU->mCodeMemMaxIdx)]](aCPU);
-        }
+        execute_current_opcode(aCPU);
         ticked = true;
+        aCPU->first_cycle = true;
+
         // update parity bit
         v = aCPU->mSFR[REG_ACC];
         v ^= v >> 4;
@@ -490,7 +510,13 @@ bool tick(struct em8051 *aCPU)
 
     timer_tick(aCPU);
 
-    return ticked;
+    if (aCPU->mTickDelay > 0) {
+        // if multi cycle instr, do no yet update PC
+        aCPU->mPCSaved = aCPU->mPC;
+        aCPU->mPC = old_pc;
+    }
+
+    return ticked || is_idle;
 }
 
 uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer)
@@ -505,48 +531,58 @@ uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer)
         strcpy(aBuffer, "POWER DOWN");
         return 0;
     }
+
+    if (! aCPU->first_cycle) {
+        // Current instruction has not finished executing
+        strcpy(aBuffer, "...");
+        return 0;
+    }
+
+#if USE_SWITCH_DISPATCH
+    return do_dec(aCPU, aPosition, aBuffer);
+#else // USE_SWITCH_DISPATCH
     return aCPU->dec[aCPU->mCodeMem[aPosition & (aCPU->mCodeMemMaxIdx)]](aCPU, aPosition, aBuffer);
+#endif // USE_SWITCH_DISPATCH
 }
 
-void disasm_setptrs(struct em8051 *aCPU);
-void op_setptrs(struct em8051 *aCPU);
-
-void reset(struct em8051 *aCPU, bool aWipe)
+void reset(struct em8051 *aCPU, int aWipe)
 {
-    // clear memory, set registers to bootup values, etc    
-    if (aWipe)
+    // clear memory
+    if (aWipe & RESET_RAM)
     {
-        memset(aCPU->mCodeMem, 0, aCPU->mCodeMemMaxIdx+1);
         memset(aCPU->mExtData, 0, aCPU->mExtDataMaxIdx+1);
         memset(aCPU->mLowerData, 0, 128);
         if (aCPU->mUpperData) 
             memset(aCPU->mUpperData, 0, 128);
     }
 
-    memset(aCPU->mSFR, 0, 128);
+    // Wipe out Code Region
+    if (aWipe & RESET_ROM)
+        memset(aCPU->mCodeMem, 0, aCPU->mCodeMemMaxIdx+1);
 
-    aCPU->mPC = 0;
-    aCPU->mTickDelay = 0;
-    aCPU->mSFR[REG_SP] = 7;
-    aCPU->mSFR[REG_P0] = 0xff;
-    aCPU->mSFR[REG_P1] = 0xff;
-    aCPU->mSFR[REG_P2] = 0xff;
-    aCPU->mSFR[REG_P3] = 0xff;
+    if (aWipe & RESET_SFR)
+    {
+        // set registers to bootup values, etc
+        memset(aCPU->mSFR, 0, 128);
+
+        aCPU->mPC = 0;
+        aCPU->mTickDelay = 0;
+        aCPU->mSFR[REG_SP] = 7;
+        aCPU->mSFR[REG_P0] = 0xff;
+        aCPU->mSFR[REG_P1] = 0xff;
+        aCPU->mSFR[REG_P2] = 0xff;
+        aCPU->mSFR[REG_P3] = 0xff;
+        aCPU->mSFR[REG_PCON] = 0x00;
+
+        // Random values
+        aCPU->mSFR[REG_SBUF] = rand();
+    }
 
     // Power-off flag will be 1 only after a power on (cold reset).
     // A warm reset doesn’t affect the value of this bit
     // ... Therefore, we only set it if aWipe is 1
-    if (aWipe)
+    if (aWipe & RESET_RAM)
         aCPU->mSFR[REG_PCON] |= (1<<4);
-
-    // Random values
-    if (aWipe)
-        aCPU->mSFR[REG_SBUF] = rand();
-
-    // build function pointer lists
-
-    disasm_setptrs(aCPU);
-    op_setptrs(aCPU);
 
     // Clean internal variables
     aCPU->mInterruptActive = 0;

@@ -70,7 +70,8 @@ struct em8051
     unsigned char *mUpperData; // 0 or 128 bytes; leave to NULL if none
     unsigned char mSFR[128]; // 128 bytes; (special function registers)
     uint16_t mPC; // Program Counter; outside memory area
-    uint8_t mTickDelay; // How many ticks should we delay before continuing
+    uint16_t mPCSaved; // Program Counter saved for multi cycle instructions
+    uint8_t mTickDelay; // How many ticks does that instruction still need
     em8051operation op[256]; // function pointers to opcode handlers
     em8051decoder dec[256]; // opcode-to-string decoder handlers    
     em8051exception except; // callback: exceptional situation occurred
@@ -91,21 +92,26 @@ struct em8051
     uint8_t serial_out_idx;
     uint8_t serial_out_remaining_bits;
     bool serial_interrupt_trigger;
+
+    unsigned int clocks;
+
+    bool first_cycle;
 };
 
 // set the emulator into reset state. Must be called before tick(), as
 // it also initializes the function pointers. aWipe tells whether to reset
 // all memory to zero.
-void reset(struct em8051 *aCPU, bool aWipe);
+void reset(struct em8051 *aCPU, int aWipe);
 
 // run one emulator tick, or 12 hardware clock cycles.
-// returns "true" if a new operation was executed.
+// returns "true" if some refresh is needed
 bool tick(struct em8051 *aCPU);
 
 // decode the next operation as character string.
 // buffer must be big enough (64 bytes is very safe). 
 // Returns length of opcode.
 uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer);
+uint8_t do_dec(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer);
 
 // Load an intel hex format object file. Returns negative for errors.
 int load_obj(struct em8051 *aCPU, char *aFilename);
@@ -260,3 +266,14 @@ enum EM8051_EXCEPTION
     EXCEPTION_ILLEGAL_OPCODE     // for the single 'reserved' opcode in the architecture
 };
 
+enum EM8051_RESET
+{
+    RESET_NONE  = 0x00,  // No RESET
+    RESET_SFR   = 0x01,  // Wipe SFR
+    RESET_RAM   = 0x02,  // Wipe RAM
+    RESET_ROM   = 0x04,  // Wipe CODE
+};
+
+void init_vcd_in(char *filename);
+void init_vcd_out(char *filename);
+void set_vcd_out_sync(int sync);

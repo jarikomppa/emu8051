@@ -513,8 +513,8 @@ void mainview_update(struct em8051 *aCPU)
 
         while (lastclock != icount)
         {
-            char assembly[128];
-            char temp[256];
+            char assembly[128] = { 0 };
+            char temp[256] = { 0 };
             int old_pc;
             int hoffs;
             
@@ -525,8 +525,11 @@ void mainview_update(struct em8051 *aCPU)
             memcpy(&old_pc, history + hoffs + 128 + 64, sizeof(int));
             opcode_bytes = decode(aCPU, old_pc, assembly);
             stringpos = 0;
-            stringpos += sprintf(temp + stringpos,"\n%04X  ", old_pc & 0xffff);
-            
+            if (opcode_bytes)
+                stringpos += sprintf(temp + stringpos,"\n%04X  ", old_pc & 0xffff);
+            else
+                stringpos += sprintf(temp + stringpos,"\n      ");
+
             for (i = 0; i < opcode_bytes; i++)
                 stringpos += sprintf(temp + stringpos,"%02X ", aCPU->mCodeMem[(old_pc + i) & (aCPU->mCodeMemMaxIdx)]);
             
@@ -593,8 +596,8 @@ void mainview_update(struct em8051 *aCPU)
 
 
     werase(miscview);
-    wprintw(miscview, "\nCycles :% 10u\n", clocks);
-    wprintw(miscview, "Time   :% 14.3fms\n", 1000.0f * clocks * (1.0f/opt_clock_hz));
+    wprintw(miscview, "\nCycles :% 10u\n", aCPU->clocks);
+    wprintw(miscview, "Time   :% 14.3fms\n", 1000.0f * aCPU->clocks * (1.0f/opt_clock_hz));
     wprintw(miscview, "HW     : Super8051 @%0.1fMHz\n", opt_clock_hz / (1000*1000.0f));
 
     // convert the buffer to printable chars
