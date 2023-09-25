@@ -94,6 +94,8 @@ struct em8051
     bool serial_interrupt_trigger;
 
     unsigned int clocks;
+
+    bool first_cycle;
 };
 
 // set the emulator into reset state. Must be called before tick(), as

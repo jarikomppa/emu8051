@@ -465,6 +465,7 @@ bool tick(struct em8051 *aCPU)
     if (aCPU->mTickDelay)
     {
         aCPU->mTickDelay--; // Still executing the current instruction
+        aCPU->first_cycle = false;
         timer_tick(aCPU); // execute timers
 
         // If we are now in the last cycle for the instruction, update PC
@@ -497,6 +498,7 @@ bool tick(struct em8051 *aCPU)
     {
         execute_current_opcode(aCPU);
         ticked = true;
+        aCPU->first_cycle = true;
 
         // update parity bit
         v = aCPU->mSFR[REG_ACC];
@@ -530,7 +532,7 @@ uint8_t decode(struct em8051 *aCPU, uint16_t aPosition, char *aBuffer)
         return 0;
     }
 
-    if (aCPU->mTickDelay > 0) {
+    if (! aCPU->first_cycle) {
         // Current instruction has not finished executing
         strcpy(aBuffer, "...");
         return 0;
